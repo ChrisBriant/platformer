@@ -23,6 +23,7 @@ var game = new Phaser.Game(config);
 
 var map;
 var player;
+var spider;
 var cursors;
 var groundLayer, coinLayer, platformLayer;
 var text;
@@ -42,6 +43,7 @@ function preload() {
     this.load.image('coin', 'assets/coinGold.png');
     // player animations
     this.load.atlas('player', 'assets/player.png', 'assets/player.json');
+    this.load.atlas('spider', 'assets/spider.png', 'assets/spider.json');
     this.load.atlas('bof', 'assets/bof.png', 'assets/bof.json');
 }
 
@@ -77,12 +79,41 @@ function create() {
     player.setBounce(0.2); // our player will bounce from items
     player.setCollideWorldBounds(true); // don't go out of the map
 
+
+    //Create the line for the spider to follow
+    var curve = new Phaser.Curves.Line(new Phaser.Math.Vector2(400, 1600), new Phaser.Math.Vector2(700, 1600));
+    var graphics = this.add.graphics();
+    graphics.lineStyle(1, 0x000000, 0.5);
+    curve.draw(graphics);
+
+    // create the spider sprite
+    //spider = this.physics.add.follower(curve, 400, 1600, 'spider');
+    spider = this.physics.add.sprite(400, 400, 'spider');
+    spider.setBounce(0.2); // our player will bounce from items
+    spider.setCollideWorldBounds(true); // don't go out of the map
+    spider.setVelocityX(-20);
+    spider.flipX = true;
+    console.log(spider);
+
+    console.log(spider);
+    // spider walk animation
+    this.anims.create({
+        key: 'spiderr',
+        frames: this.anims.generateFrameNames('spider', {prefix: 'sprite_', start: 0, end: 12}),
+        frameRate: 10,
+        repeat: -1
+    });
+    spider.anims.play('spiderr');
+
+
     // small fix to our player images, we resize the physics body object slightly
     player.body.setSize(player.width, player.height-8);
 
     // player will collide with the level tiles
     this.physics.add.collider(groundLayer, player);
     this.physics.add.collider(platformLayer, player);
+    this.physics.add.collider(groundLayer, spider);
+    this.physics.add.collider(platformLayer, spider);
 
     //coinLayer.setTileIndexCallback(17, collectCoin, this);
     // when the player overlaps with a tile with index 17, collectCoin
@@ -121,6 +152,8 @@ function create() {
     });
     // fix the text to the camera
     text.setScrollFactor(0);
+
+    //console.log(platformLayer);
 }
 
 // this function will be called when the player touches a coin
