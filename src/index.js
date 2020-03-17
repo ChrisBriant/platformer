@@ -24,8 +24,9 @@ var game = new Phaser.Game(config);
 var map;
 var player;
 var spider;
+var spidergroup;
 var cursors;
-var groundLayer, coinLayer, platformLayer;
+var groundLayer, coinLayer, platformLayer, platformBoundaries;
 var text;
 var score = 0;
 
@@ -36,7 +37,7 @@ function preload() {
     // tiles in spritesheet
     //this.load.spritesheet('tiles', 'assets/tiles.png', {frameWidth: 70, frameHeight: 70});
     // map made with Tiled in JSON format
-    this.load.tilemapTiledJSON('map', 'assets/bofmap3.json');
+    this.load.tilemapTiledJSON('map', 'assets/bofmap5.json');
     // tiles in spritesheet
     this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 30, frameHeight: 30});
     // simple coin image
@@ -63,6 +64,12 @@ function create() {
     // the player will collide with this layer
     platformLayer.setCollisionByExclusion([-1]);
 
+    console.log(platformLayer);
+
+    platformBoundaries = map.createDynamicLayer('invisiblewalls', groundTiles, 0, 0);
+    // the player will collide with this layer
+    platformBoundaries.setCollisionByExclusion([-1]);
+
     // coin image used as tileset
     //var coinTiles = map.addTilesetImage('coin');
     // add coins as tiles
@@ -80,22 +87,49 @@ function create() {
     player.setCollideWorldBounds(true); // don't go out of the map
 
 
-    //Create the line for the spider to follow
+    //Create the line for the spider to follow NOT USED
+    /*
     var curve = new Phaser.Curves.Line(new Phaser.Math.Vector2(400, 1600), new Phaser.Math.Vector2(700, 1600));
     var graphics = this.add.graphics();
     graphics.lineStyle(1, 0x000000, 0.5);
     curve.draw(graphics);
+    */
 
     // create the spider sprite
-    //spider = this.physics.add.follower(curve, 400, 1600, 'spider');
-    spider = this.physics.add.sprite(400, 400, 'spider');
+    /*
+    spider = this.physics.add.sprite(400, 200, 'spider');
     spider.setBounce(0.2); // our player will bounce from items
     spider.setCollideWorldBounds(true); // don't go out of the map
-    spider.setVelocityX(-20);
-    spider.flipX = true;
+    spider.body.onWorldBounds = true;
+    spider.setVelocityX(20);
+    spider.flipX = false;
     console.log(spider);
+    */
 
-    console.log(spider);
+    // Let's get the spike objects, these are NOT sprites
+    var spiders = map.getObjectLayer('spiders')['objects'];
+    spidergroup = this.physics.add.group();
+
+    // Now we create spikes in our sprite group for each object in our map
+    console.log(spiders);
+    spiders.forEach(spider => {
+      console.log(spider.y);
+      // Add new spikes to our sprite group, change the start y position to meet the platform
+      spidergroup.create(spider.x, spider.y, 'spider');
+    });
+    console.log(spidergroup);
+
+    //Below doesn't work
+    /*
+    spider.body.world.on('worldbounds', function(body) {
+      // Checks if it's the sprite that you'listening for
+      if (body.gameObject === this) {
+        // Make the enemy change direction
+        this.setVelocityX(-20);
+      }
+    }, spider);
+    */
+
     // spider walk animation
     this.anims.create({
         key: 'spiderr',
@@ -103,7 +137,7 @@ function create() {
         frameRate: 10,
         repeat: -1
     });
-    spider.anims.play('spiderr');
+    //spider.anims.play('spiderr');
 
 
     // small fix to our player images, we resize the physics body object slightly
@@ -112,8 +146,9 @@ function create() {
     // player will collide with the level tiles
     this.physics.add.collider(groundLayer, player);
     this.physics.add.collider(platformLayer, player);
-    this.physics.add.collider(groundLayer, spider);
-    this.physics.add.collider(platformLayer, spider);
+    this.physics.add.collider(groundLayer, spidergroup);
+    this.physics.add.collider(platformBoundaries, spidergroup);
+    this.physics.add.collider(platformLayer, spider,enemyHitsPlatform,null,this);
 
     //coinLayer.setTileIndexCallback(17, collectCoin, this);
     // when the player overlaps with a tile with index 17, collectCoin
@@ -165,6 +200,22 @@ function collectCoin(sprite, tile) {
 }
 
 function update(time, delta) {
+    /*
+    if(spider.body.position.x > this.physics.world.bounds.width-10) {
+      console.log("position");
+      console.log(spider.body.position.x);
+    }*/
+    /*
+    if(spider.body.position.x >= spider.body.prev.x) {
+      console.log("right");
+      spider.setVelocityX(20);
+      spider.flipX = false;
+    } else {
+      console.log("left");
+      spider.setVelocityX(-20);
+      spider.flipX = true;
+    }*/
+
     if (cursors.left.isDown)
     {
         player.body.setVelocityX(-200);
@@ -185,4 +236,8 @@ function update(time, delta) {
     {
         player.body.setVelocityY(-500);
     }
+}
+
+function enemyHitsPlatform() {
+
 }
