@@ -8,7 +8,7 @@ var config = {
         default: 'arcade',
         arcade: {
             gravity: {y: 500},
-            debug: false
+            debug: true
         }
     },
     scene: {
@@ -82,7 +82,7 @@ function create() {
     //this.physics.world.bounds.height = 600;
 
     // create the player sprite
-    player = this.physics.add.sprite(200, 200, 'bof');
+    player = this.physics.add.sprite(200, 900, 'bof');
     player.setBounce(0.2); // our player will bounce from items
     player.setCollideWorldBounds(true); // don't go out of the map
 
@@ -115,7 +115,7 @@ function create() {
     spiders.forEach(spider => {
       console.log(spider.y);
       // Add new spikes to our sprite group, change the start y position to meet the platform
-      spidergroup.create(spider.x, spider.y, 'spider');
+      spidergroup.create(spider.x, spider.y-20, 'spider');
     });
     console.log(spidergroup);
 
@@ -148,7 +148,7 @@ function create() {
     this.physics.add.collider(platformLayer, player);
     this.physics.add.collider(groundLayer, spidergroup);
     this.physics.add.collider(platformBoundaries, spidergroup);
-    this.physics.add.collider(platformLayer, spider,enemyHitsPlatform,null,this);
+    this.physics.add.collider(platformLayer, spidergroup);
 
     //coinLayer.setTileIndexCallback(17, collectCoin, this);
     // when the player overlaps with a tile with index 17, collectCoin
@@ -200,6 +200,7 @@ function collectCoin(sprite, tile) {
 }
 
 function update(time, delta) {
+    //this.scene.pause();
     /*
     if(spider.body.position.x > this.physics.world.bounds.width-10) {
       console.log("position");
@@ -239,5 +240,12 @@ function update(time, delta) {
 }
 
 function enemyHitsPlatform() {
+
+}
+
+function render() {
+
+    // Sprite debug info
+    game.debug.spriteInfo(spidergroup, 32, 32);
 
 }
