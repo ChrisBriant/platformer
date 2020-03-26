@@ -25,6 +25,8 @@ var map;
 var player;
 var spider;
 var spidergroup;
+var snake;
+var snakegroup;
 var cursors;
 var groundLayer, coinLayer, platformLayer, platformBoundaries;
 var text;
@@ -37,7 +39,7 @@ function preload() {
     // tiles in spritesheet
     //this.load.spritesheet('tiles', 'assets/tiles.png', {frameWidth: 70, frameHeight: 70});
     // map made with Tiled in JSON format
-    this.load.tilemapTiledJSON('map', 'assets/bofmap5.json');
+    this.load.tilemapTiledJSON('map', 'assets/bofmap6.json');
     // tiles in spritesheet
     this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 30, frameHeight: 30});
     // simple coin image
@@ -45,6 +47,7 @@ function preload() {
     // player animations
     this.load.atlas('player', 'assets/player.png', 'assets/player.json');
     this.load.atlas('spider', 'assets/spider.png', 'assets/spider.json');
+    this.load.atlas('snake', 'assets/Snake2.png', 'assets/snake.json');
     this.load.atlas('bof', 'assets/bof.png', 'assets/bof.json');
 }
 
@@ -106,18 +109,41 @@ function create() {
     console.log(spider);
     */
 
+    // create the spider sprite
+    snake = this.physics.add.sprite(320, 208, 'snake');
+    snake.setBounce(0.2); // our player will bounce from items
+    snake.setCollideWorldBounds(true); // don't go out of the map
+    snake.body.onWorldBounds = true;
+    snake.setVelocityX(20);
+    snake.flipX = false;
+    console.log(snake);
+
+
     // Let's get the spike objects, these are NOT sprites
     var spiders = map.getObjectLayer('spiders')['objects'];
     spidergroup = this.physics.add.group();
 
     // Now we create spikes in our sprite group for each object in our map
-    console.log(spiders);
     spiders.forEach(spider => {
-      console.log(spider.y);
       // Add new spikes to our sprite group, change the start y position to meet the platform
-      spidergroup.create(spider.x, spider.y-20, 'spider');
+      spidergroup.create(spider.x, spider.y-18, 'spider');
     });
     console.log(spidergroup);
+
+    var snakes = map.getObjectLayer('snakes')['objects'];
+    snakegroup = this.physics.add.group();
+
+    // Snakes
+    /*
+    console.log("snakes")
+    console.log(snakes);
+    snakes.forEach(snake => {
+      console.log(snake.y);
+      // Add new spikes to our sprite group, change the start y position to meet the platform
+      spidergroup.create(snake.x, snake.y-18, 'snake');
+    });
+    console.log(snakegroup);
+    */
 
     //Below doesn't work
     /*
@@ -138,7 +164,14 @@ function create() {
         repeat: -1
     });
     //spider.anims.play('spiderr');
-
+    // snake animation
+    this.anims.create({
+        key: 'snake',
+        frames: this.anims.generateFrameNames('snake', {prefix: 'sprite_', start: 0, end: 20}),
+        frameRate: 10,
+        repeat: -1
+    });
+    snake.anims.play('snake');
 
     // small fix to our player images, we resize the physics body object slightly
     player.body.setSize(player.width, player.height-8);
@@ -149,6 +182,7 @@ function create() {
     this.physics.add.collider(groundLayer, spidergroup);
     this.physics.add.collider(platformBoundaries, spidergroup);
     this.physics.add.collider(platformLayer, spidergroup);
+    this.physics.add.collider(platformLayer, snake);
 
     //coinLayer.setTileIndexCallback(17, collectCoin, this);
     // when the player overlaps with a tile with index 17, collectCoin
