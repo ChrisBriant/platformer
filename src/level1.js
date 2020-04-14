@@ -9,16 +9,11 @@ export default new Phaser.Class({
 
     preload: function () {
         // map made with Tiled in JSON format
-        this.load.tilemapTiledJSON('map', 'assets/bofmap6.json');
+        this.load.tilemapTiledJSON('map', 'assets/bof2.json');
         // tiles in spritesheet
-        this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 30, frameHeight: 30});
-        // simple coin image
-        this.load.image('coin', 'assets/coinGold.png');
+        this.load.spritesheet('world1tileset2', 'assets/world1tileset2.png', {frameWidth: 32, frameHeight: 32});
         // player animations
         this.load.atlas('player', 'assets/player.png', 'assets/player.json');
-        this.load.atlas('spider', 'assets/spider.png', 'assets/spider.json');
-        this.load.atlas('snake', 'assets/Snake2.png', 'assets/snake.json');
-        this.load.atlas('bof', 'assets/bof.png', 'assets/bof.json');
     },
 
    create: function() {
@@ -26,29 +21,26 @@ export default new Phaser.Class({
       this.map = this.make.tilemap({key: 'map'});
 
       // tiles for the ground layer
-      var groundTiles = this.map.addTilesetImage('tilemap');
-      // create the ground layer
-      this.groundLayer = this.map.createDynamicLayer('ground', groundTiles, 0, 0);
-      // the player will collide with this layer
-      this.groundLayer.setCollisionByExclusion([-1]);
+      this.tiles = this.map.addTilesetImage('world1tileset2')
 
       // create the platforms layer
-      this.platformLayer = this.map.createDynamicLayer('platforms', groundTiles, 0, 0);
+      this.platformLayer = this.map.createDynamicLayer('platformLayer', this.tiles, 0, 0);
       // the player will collide with this layer
       this.platformLayer.setCollisionByExclusion([-1]);
 
-      console.log(this.platformLayer);
 
-      this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', groundTiles, 0, 0);
+      //this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', groundTiles, 0, 0);
       // the player will collide with this layer
-      this.platformBoundaries.setCollisionByExclusion([-1]);
+      //this.platformBoundaries.setCollisionByExclusion([-1]);
 
       // set the boundaries of our game world
-      this.physics.world.bounds.width = this.groundLayer.width;
-      this.physics.world.bounds.height = this.groundLayer.height;
+      this.physics.world.bounds.width = this.tiles.width;
+      this.physics.world.bounds.height = this.tiles.height;
 
       // create the player sprite
-      this.player = this.physics.add.sprite(200, 900, 'bof');
+      console.log(this.map.heightInPixels);
+      //this.player = this.physics.add.sprite(100,this.tiles.height - 64, 'player');
+      this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
       this.player.setBounce(0.2); // our player will bounce from items
       this.player.setCollideWorldBounds(true); // don't go out of the map
 
@@ -76,6 +68,7 @@ export default new Phaser.Class({
       */
 
       // Let's get the spike objects, these are NOT sprites
+      /*
       var spiders = this.map.getObjectLayer('spiders')['objects'];
       this.spidergroup = this.physics.add.group();
 
@@ -118,19 +111,13 @@ export default new Phaser.Class({
       });
       this.snakegroup.playAnimation('snake');
       //this.anims.play('snake');
-
+      */
       // small fix to our player images, we resize the physics body object slightly
       this.player.body.setSize(this.player.width, this.player.height-8);
 
       // player will collide with the level tiles
-      this.physics.add.collider(this.groundLayer, this.player);
       this.physics.add.collider(this.platformLayer, this.player);
-      this.physics.add.collider(this.groundLayer, this.spidergroup);
-      this.physics.add.collider(this.platformBoundaries, this.spidergroup,this.reverseSprite,null,this);
-      this.physics.add.collider(this.platformLayer, this.spidergroup);
-      this.physics.add.collider(this.platformLayer, this.snakegroup);
-      this.physics.add.collider(this.groundLayer, this.snakegroup);
-      this.physics.add.collider(this.platformBoundaries, this.snakegroup);
+      //this.physics.add.collider(this.platformBoundaries, this.spidergroup,this.reverseSprite,null,this);
 
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
@@ -139,16 +126,32 @@ export default new Phaser.Class({
       // player walk animation
       this.anims.create({
           key: 'walk',
-          frames: this.anims.generateFrameNames('bof', {prefix: 'sprite_', start: 1, end: 2}),
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 0, end: 16}),
           frameRate: 10,
           repeat: -1
       });
-      // idle with only one frame, so repeat is not neaded
+      // player walk animation
       this.anims.create({
           key: 'idle',
-          frames: [{key: 'bof', frame: 'sprite_0'}],
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 16, end: 16}),
           frameRate: 10,
+          repeat: 0
       });
+      // player walk animation
+      this.anims.create({
+          key: 'jump',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 19, end: 19}),
+          frameRate: 10,
+          repeat: 0
+      });
+      // player walk animation
+      this.anims.create({
+          key: 'tailwhip',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 20, end: 27}),
+          frameRate: 10,
+          repeat: -1
+      });
+
 
 
       this.cursors = this.input.keyboard.createCursorKeys();
@@ -176,22 +179,6 @@ export default new Phaser.Class({
   },
 
   update: function(time, delta) {
-      //this.scene.pause();
-      /*
-      if(spider.body.position.x > this.physics.world.bounds.width-10) {
-        console.log("position");
-        console.log(spider.body.position.x);
-      }*/
-      /*
-      if(spider.body.position.x >= spider.body.prev.x) {
-        console.log("right");
-        spider.setVelocityX(20);
-        spider.flipX = false;
-      } else {
-        console.log("left");
-        spider.setVelocityX(-20);
-        spider.flipX = true;
-      }*/
 
       if (this.cursors.left.isDown)
       {
@@ -211,7 +198,7 @@ export default new Phaser.Class({
       // jump
       if (this.cursors.up.isDown && this.player.body.onFloor())
       {
-          this.player.body.setVelocityY(-500);
+          this.player.body.setVelocityY(-400);
       }
   },
 
