@@ -9,11 +9,12 @@ export default new Phaser.Class({
 
     preload: function () {
         // map made with Tiled in JSON format
-        this.load.tilemapTiledJSON('map', 'assets/bof2.json');
+        this.load.tilemapTiledJSON('map', 'assets/bof4.json');
         // tiles in spritesheet
         this.load.spritesheet('world1tileset2', 'assets/world1tileset2.png', {frameWidth: 32, frameHeight: 32});
         // player animations
         this.load.atlas('player', 'assets/player.png', 'assets/player.json');
+        this.load.atlas('worm', 'assets/worm.png', 'assets/worm.json');
     },
 
    create: function() {
@@ -23,16 +24,16 @@ export default new Phaser.Class({
       // tiles for the ground layer
       this.tiles = this.map.addTilesetImage('world1tileset2')
 
+      this.platformLayer = this.map.createDynamicLayer('BG', this.tiles, 0, 0);
       // create the platforms layer
       this.platformLayer = this.map.createDynamicLayer('platformLayer', this.tiles, 0, 0);
       // the player will collide with this layer
       this.platformLayer.setCollisionByExclusion([-1]);
 
 
-      //this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', groundTiles, 0, 0);
-      // the player will collide with this layer
-      //this.platformBoundaries.setCollisionByExclusion([-1]);
-
+      this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', this.tiles, 0, 0);
+      this.platformBoundaries.setCollisionByExclusion([-1])
+      
       // set the boundaries of our game world
       this.physics.world.bounds.width = this.tiles.width;
       this.physics.world.bounds.height = this.tiles.height;
@@ -45,63 +46,26 @@ export default new Phaser.Class({
       this.player.setCollideWorldBounds(true); // don't go out of the map
 
 
-      // create the spider sprite
-      /*
-      spider = this.physics.add.sprite(400, 200, 'spider');
-      spider.setBounce(0.2); // our player will bounce from items
-      spider.setCollideWorldBounds(true); // don't go out of the map
-      spider.body.onWorldBounds = true;
-      spider.setVelocityX(20);
-      spider.flipX = false;
-      console.log(spider);
-      */
+      // create the worm sprite
+      var worms = this.map.getObjectLayer('worms')['objects'];
+      this.wormgroup = this.physics.add.group();
 
-      // create the spider sprite
-      /*
-      this.snake = this.physics.add.sprite(320, 208, 'snake');
-      this.snake.setBounce(0.2); // our player will bounce from items
-      this.snake.setCollideWorldBounds(true); // don't go out of the map
-      this.snake.body.onWorldBounds = true;
-      this.snake.setVelocityX(20);
-      this.snake.flipX = false;
-      console.log(this.snake);
-      */
-
-      // Let's get the spike objects, these are NOT sprites
-      /*
-      var spiders = this.map.getObjectLayer('spiders')['objects'];
-      this.spidergroup = this.physics.add.group();
-
-      // Now we create spikes in our sprite group for each object in our map
-      spiders.forEach(spider => {
-        // Add new spikes to our sprite group, change the start y position to meet the platform
-        this.spidergroup.create(spider.x, spider.y-18, 'spider');
+      worms.forEach(worm => {
+        this.wormgroup.create(worm.x, worm.y-18, 'worm');
       });
-      this.spidergroup.setVelocityX(20);
-
-      var snakes = this.map.getObjectLayer('snakes')['objects'];
-      this.snakegroup = this.physics.add.group();
-
-      // Snakes
-      console.log("snakes")
-      console.log(snakes);
-      snakes.forEach(snake => {
-        console.log(snake.y);
-        // Add new spikes to our sprite group, change the start y position to meet the platform
-        this.snakegroup.create(snake.x, snake.y-18, 'snake');
-      });
-      this.snakegroup.setVelocityX(20);
+      this.wormgroup.setVelocityX(20);
 
       // spider walk animation
       this.anims.create({
-          key: 'spiderr',
-          frames: this.anims.generateFrameNames('spider', {prefix: 'sprite_', start: 0, end: 12}),
+          key: 'wormmove',
+          frames: this.anims.generateFrameNames('worm', {prefix: 'worm ',suffix: '.aseprite', start: 0, end: 6}),
           frameRate: 10,
           repeat: -1
       });
-      this.spidergroup.playAnimation('spiderr');
+      this.wormgroup.playAnimation('worm');
       //this.anims.play('spiderr');
 
+      /*
       // snake animation
       this.anims.create({
           key: 'snake',
@@ -116,8 +80,10 @@ export default new Phaser.Class({
       this.player.body.setSize(this.player.width, this.player.height-8);
 
       // player will collide with the level tiles
+      this.physics.add.collider(this.platformLayer, this.wormgroup);
       this.physics.add.collider(this.platformLayer, this.player);
-      //this.physics.add.collider(this.platformBoundaries, this.spidergroup,this.reverseSprite,null,this);
+      this.physics.add.collider(this.platformBoundaries, this.player)
+      this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
 
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
@@ -214,13 +180,13 @@ export default new Phaser.Class({
   },
 
   reverseSprite: function() {
-    var spidersright =  this.spidergroup.children.entries.filter(child => child.body.blocked.right)
-    spidersright.forEach(spider => spider.flipX = true);
-    spidersright.forEach(spider => spider.setVelocityX(-20));
+    var wormsright =  this.wormgroup.children.entries.filter(child => child.body.blocked.right)
+    wormsright.forEach(worm => worm.flipX = true);
+    wormsright.forEach(worm => worm.setVelocityX(-20));
 
-    var spidersleft =  this.spidergroup.children.entries.filter(child => child.body.blocked.left)
-    spidersleft.forEach(spider => spider.flipX = false);
-    spidersleft.forEach(spider => spider.setVelocityX(20));
+    var wormsleft =  this.wormgroup.children.entries.filter(child => child.body.blocked.left)
+    wormsleft.forEach(worm => worm.flipX = false);
+    wormsleft.forEach(worm => worm.setVelocityX(20));
 
   }
 
