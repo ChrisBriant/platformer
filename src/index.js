@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import Level1 from "./level1.js"
+import PlayerDied from "./playerdied.js"
 
 var config = {
     type: Phaser.AUTO,
@@ -12,7 +13,7 @@ var config = {
             debug: true
         }
     },
-    scene: [Level1]
+    scene: [Level1,PlayerDied]
 }
 
 var game = new Phaser.Game(config);

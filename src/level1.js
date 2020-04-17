@@ -18,6 +18,11 @@ export default new Phaser.Class({
     },
 
    create: function() {
+     //Control variables
+     this.playerIsDead = false;
+     this.playerAttack = false;
+     this.attackTimers = [];
+
       // load the map
       this.map = this.make.tilemap({key: 'map'});
 
@@ -33,7 +38,7 @@ export default new Phaser.Class({
 
       this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', this.tiles, 0, 0);
       this.platformBoundaries.setCollisionByExclusion([-1])
-      
+
       // set the boundaries of our game world
       this.physics.world.bounds.width = this.tiles.width;
       this.physics.world.bounds.height = this.tiles.height;
@@ -62,7 +67,7 @@ export default new Phaser.Class({
           frameRate: 10,
           repeat: -1
       });
-      this.wormgroup.playAnimation('worm');
+      this.wormgroup.playAnimation('wormmove');
       //this.anims.play('spiderr');
 
       /*
@@ -80,10 +85,13 @@ export default new Phaser.Class({
       this.player.body.setSize(this.player.width, this.player.height-8);
 
       // player will collide with the level tiles
+      this.playerColliders = [];
+
       this.physics.add.collider(this.platformLayer, this.wormgroup);
-      this.physics.add.collider(this.platformLayer, this.player);
-      this.physics.add.collider(this.platformBoundaries, this.player)
+      this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
       this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
+      //Enemy collisions
+      this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
 
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
@@ -117,6 +125,14 @@ export default new Phaser.Class({
           frameRate: 10,
           repeat: -1
       });
+      // player walk animation
+      this.anims.create({
+          key: 'death',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 28, end: 33}),
+          frameRate: 10,
+          repeat: 0
+      });
+
 
 
 
@@ -146,25 +162,48 @@ export default new Phaser.Class({
 
   update: function(time, delta) {
 
-      if (this.cursors.left.isDown)
-      {
-          this.player.body.setVelocityX(-200);
-          this.player.anims.play('walk', true); // walk left
-          this.player.flipX = true; // flip the sprite to the left
-      }
-      else if (this.cursors.right.isDown)
-      {
-          this.player.body.setVelocityX(200);
-          this.player.anims.play('walk', true);
-          this.player.flipX = false; // use the original sprite looking to the right
+      if(!this.playerIsDead) {
+        if(!this.playerAttack) {
+          //Block movement if attacking
+          if (this.cursors.left.isDown)
+          {
+              this.player.body.setVelocityX(-200);
+              this.player.anims.play('walk', true); // walk left
+              this.player.flipX = true; // flip the sprite to the left
+          }
+          else if (this.cursors.right.isDown)
+          {
+              this.player.body.setVelocityX(200);
+              this.player.anims.play('walk', true);
+              this.player.flipX = false; // use the original sprite looking to the right
+          } else {
+              this.player.body.setVelocityX(0);
+              this.player.anims.play('idle', true);
+          }
+        } else {
+          console.log("Attacking");
+        }
+        // jump
+        if (this.cursors.up.isDown && this.player.body.onFloor())
+        {
+            this.player.body.setVelocityY(-400);
+        }
+        //Attack
+        if (this.cursors.space.isDown) {
+          this.player.anims.play('tailwhip',true);
+          this.playerAttack = true;
+          //Stop the attack from running
+          console.log(this.attachTimer);
+          this.attackTimer = this.time.addEvent({
+            delay: 1000,
+            callback: function() { this.playerAttack = false; },
+            callbackScope: this,
+            loop: true
+          });
+
+        }
       } else {
-          this.player.body.setVelocityX(0);
-          this.player.anims.play('idle', true);
-      }
-      // jump
-      if (this.cursors.up.isDown && this.player.body.onFloor())
-      {
-          this.player.body.setVelocityY(-400);
+        this.player.anims.play('death',true);
       }
   },
 
@@ -188,6 +227,39 @@ export default new Phaser.Class({
     wormsleft.forEach(worm => worm.flipX = false);
     wormsleft.forEach(worm => worm.setVelocityX(20));
 
+  },
+
+  hitPlayer: function() {
+    //Remove from all collision groups, change velocityY so that he flies up and play death animation
+    //Check below for a function which removes the collider by name
+
+    //https://www.html5gamedevs.com/topic/39026-how-do-you-remove-collidersoverlap/
+
+    //See if there is a way to identify the player ones from below
+    this.playerIsDead = true;
+    this.timer = this.time.addEvent({
+      delay: 2000,
+      callback: function() { this.scene.start('PlayerDied');},
+      callbackScope: this,
+      loop: true
+    });
+    //this.input.keyboard.removeCapture(37,38,39,40);
+    this.playerColliders.forEach(collider => collider.destroy());
+    this.player.setVelocityX(0);
+    this.player.setVelocityY(-400);
+
+  },
+
+  //Set the attack mode
+  playerAttack: function() {
+    this.playerAttack = true;
+    //Stop the attack from running
+    this.attackTimer = this.time.addEvent({
+      delay: 2000,
+      callback: function() { this.playerAttack = false; },
+      callbackScope: this,
+      loop: true
+    });
   }
 
 });

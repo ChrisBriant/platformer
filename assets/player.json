@@ -222,6 +222,54 @@
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
     "sourceSize": { "w": 64, "h": 64 },
     "duration": 100
+   },
+   "bof 28.aseprite": {
+    "frame": { "x": 1792, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 29.aseprite": {
+    "frame": { "x": 1856, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 30.aseprite": {
+    "frame": { "x": 1920, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 31.aseprite": {
+    "frame": { "x": 1984, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 32.aseprite": {
+    "frame": { "x": 2048, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 33.aseprite": {
+    "frame": { "x": 2112, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
    }
  },
  "meta": {
@@ -229,18 +277,20 @@
   "version": "1.2.17-x64",
   "image": "bof.png",
   "format": "I8",
-  "size": { "w": 1792, "h": 64 },
+  "size": { "w": 2176, "h": 64 },
   "scale": "1",
   "frameTags": [
    { "name": "walk", "from": 0, "to": 16, "direction": "forward" },
    { "name": "jump", "from": 17, "to": 19, "direction": "forward" },
-   { "name": "tailwhip", "from": 20, "to": 27, "direction": "forward" }
+   { "name": "tailwhip", "from": 20, "to": 27, "direction": "forward" },
+   { "name": "death", "from": 28, "to": 33, "direction": "forward" }
   ],
   "layers": [
    { "name": "back arm", "opacity": 255, "blendMode": "normal" },
    { "name": "backleg", "opacity": 255, "blendMode": "normal" },
    { "name": "body", "opacity": 255, "blendMode": "normal" },
    { "name": "head", "opacity": 255, "blendMode": "normal" },
+   { "name": "head facing", "opacity": 255, "blendMode": "normal" },
    { "name": "frontleg", "opacity": 255, "blendMode": "normal" },
    { "name": "tail", "opacity": 255, "blendMode": "normal" },
    { "name": "front arm", "opacity": 255, "blendMode": "normal" }
