@@ -23,6 +23,9 @@ export default new Phaser.Class({
      this.playerAttack = false;
      this.attackTimers = [];
 
+     //Sprite groups for enemy deaths
+     this.deadworms = this.physics.add.group();
+
       // load the map
       this.map = this.make.tilemap({key: 'map'});
 
@@ -50,6 +53,9 @@ export default new Phaser.Class({
       this.player.setBounce(0.2); // our player will bounce from items
       this.player.setCollideWorldBounds(true); // don't go out of the map
 
+      //var thewormtest = this.physics.add.sprite(450,this.map.heightInPixels-300, 'worm')
+      //thewormtest.body.setSize(200,200);
+      //this.physics.add.collider(thewormtest,this.platformLayer);
 
       // create the worm sprite
       var worms = this.map.getObjectLayer('worms')['objects'];
@@ -68,6 +74,7 @@ export default new Phaser.Class({
           repeat: -1
       });
       this.wormgroup.playAnimation('wormmove');
+      console.log(this.wormgroup);
       //this.anims.play('spiderr');
 
       /*
@@ -91,7 +98,7 @@ export default new Phaser.Class({
       this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
       this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
       //Enemy collisions
-      this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.overlap(this.wormgroup, this.player, this.hitPlayer,null,this));
 
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
@@ -163,25 +170,28 @@ export default new Phaser.Class({
   update: function(time, delta) {
 
       if(!this.playerIsDead) {
-        if(!this.playerAttack) {
-          //Block movement if attacking
-          if (this.cursors.left.isDown)
-          {
-              this.player.body.setVelocityX(-200);
+
+        //Block movement if attacking
+        if (this.cursors.left.isDown)
+        {
+            this.player.body.setVelocityX(-200);
+            if(!this.playerAttack) {
               this.player.anims.play('walk', true); // walk left
-              this.player.flipX = true; // flip the sprite to the left
-          }
-          else if (this.cursors.right.isDown)
-          {
-              this.player.body.setVelocityX(200);
+            }
+            this.player.flipX = true; // flip the sprite to the left
+        }
+        else if (this.cursors.right.isDown)
+        {
+            this.player.body.setVelocityX(200);
+            if(!this.playerAttack) {
               this.player.anims.play('walk', true);
-              this.player.flipX = false; // use the original sprite looking to the right
-          } else {
-              this.player.body.setVelocityX(0);
-              this.player.anims.play('idle', true);
-          }
+            }
+            this.player.flipX = false; // use the original sprite looking to the right
         } else {
-          console.log("Attacking");
+            this.player.body.setVelocityX(0);
+            if(!this.playerAttack) {
+              this.player.anims.play('idle', true);
+            }
         }
         // jump
         if (this.cursors.up.isDown && this.player.body.onFloor())
@@ -190,21 +200,29 @@ export default new Phaser.Class({
         }
         //Attack
         if (this.cursors.space.isDown) {
-          this.player.anims.play('tailwhip',true);
+          if(!this.playerAttack) {
+            this.player.anims.play('tailwhip',true);
+            this.attackTimer = this.time.addEvent({
+              delay: 1000,
+              callback: function() { this.playerAttack = false; console.log("finishedattack") },
+              callbackScope: this,
+              loop: false
+            });
+          }
           this.playerAttack = true;
           //Stop the attack from running
-          console.log(this.attachTimer);
-          this.attackTimer = this.time.addEvent({
-            delay: 1000,
-            callback: function() { this.playerAttack = false; },
-            callbackScope: this,
-            loop: true
-          });
-
+          console.log(this.attackTimer);
         }
       } else {
-        this.player.anims.play('death',true);
+        //this.player.anims.play('death',true);
       }
+
+      //Destroy any sprites falling off the screen
+      var destroyWorms = this.deadworms.children.entries.filter(child => child.y > this.map.heightInPixels);
+      if(destroyWorms.length > 0) {
+        destroyWorms.forEach(worm => worm.destroy());
+      }
+
   },
 
   enemyHitsPlatform: function() {
@@ -229,25 +247,33 @@ export default new Phaser.Class({
 
   },
 
-  hitPlayer: function() {
+  hitPlayer: function(player,worm) {
     //Remove from all collision groups, change velocityY so that he flies up and play death animation
     //Check below for a function which removes the collider by name
 
     //https://www.html5gamedevs.com/topic/39026-how-do-you-remove-collidersoverlap/
 
     //See if there is a way to identify the player ones from below
-    this.playerIsDead = true;
-    this.timer = this.time.addEvent({
-      delay: 2000,
-      callback: function() { this.scene.start('PlayerDied');},
-      callbackScope: this,
-      loop: true
-    });
-    //this.input.keyboard.removeCapture(37,38,39,40);
-    this.playerColliders.forEach(collider => collider.destroy());
-    this.player.setVelocityX(0);
-    this.player.setVelocityY(-400);
-
+    if(this.playerAttack) {
+      this.deadworms.create(worm.x, worm.y, 'worm')
+      this.deadworms.playAnimation('wormmove');
+      this.deadworms.setVelocity(0,-400);
+      worm.destroy();
+    } else {
+      //Run death sequence
+      this.playerIsDead = true;
+      this.player.anims.play('death',true);
+      this.timer = this.time.addEvent({
+        delay: 2000,
+        callback: function() { this.scene.start('PlayerDied');},
+        callbackScope: this,
+        loop: true
+      });
+      //this.input.keyboard.removeCapture(37,38,39,40);
+      this.playerColliders.forEach(collider => collider.destroy());
+      this.player.setVelocityX(0);
+      this.player.setVelocityY(-400);
+    }
   },
 
   //Set the attack mode
@@ -261,5 +287,4 @@ export default new Phaser.Class({
       loop: true
     });
   }
-
 });
