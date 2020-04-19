@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+//import MoveTo from 'phaser3-rex-plugins/plugins/moveto.js';
 
 export default new Phaser.Class({
     Extends: Phaser.Scene,
@@ -56,10 +57,12 @@ export default new Phaser.Class({
       // create the player sprite
       console.log(this.map.heightInPixels);
       //Default
-      //this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
+      this.player = this.physics.add.sprite(173,7172, 'player');
+      //this.player = this.physics.add.sprite(449,1998, 'player')
       //Near tuplips
       //this.player = this.physics.add.sprite(449,1998, 'player');
-      this.player = this.physics.add.sprite(190,836, 'player');
+      //Near Mouse
+      //this.player = this.physics.add.sprite(190,836, 'player');
 
       this.player.setBounce(0.2); // our player will bounce from items
       this.player.setCollideWorldBounds(true); // don't go out of the map
@@ -78,7 +81,7 @@ export default new Phaser.Class({
       });
       this.seedgroupright.playAnimation('seedright');
 
-      this.seedgroupleft = this.physics.add.group();      this.seedgroupright = this.physics.add.group();
+      this.seedgroupleft = this.physics.add.group();      //this.seedgroupright = this.physics.add.group();
       this.anims.create({
           key: 'seedleft',
           frames: this.anims.generateFrameNames('seed', {prefix: 'seed ',suffix: '.aseprite', start: 0, end: 3}),
@@ -97,8 +100,9 @@ export default new Phaser.Class({
           repeat: -1
       });
       this.bulletgroupright.playAnimation('bulletright');
+      //this.bulletgroupright.setGravity(0);
 
-      this.bulletgroupleft = this.physics.add.group();      this.bulletgroupright = this.physics.add.group();
+      this.bulletgroupleft = this.physics.add.group();
       this.anims.create({
           key: 'bulletleft',
           frames: this.anims.generateFrameNames('bullet', {prefix: 'bullet ',suffix: '.aseprite', start: 0, end: 4}),
@@ -106,6 +110,7 @@ export default new Phaser.Class({
           repeat: -1
       });
       this.bulletgroupleft.playAnimation('bulletleft');
+      //this.bulletgroupright.setGravity(0);
       console.log(this.anims);
 
       // create the worm sprite
@@ -137,9 +142,10 @@ export default new Phaser.Class({
 
       caulis.forEach(cauli => {
         var caulisprite = this.cauligroup.create(cauli.x, cauli.y-18, 'cauli');
-        caulisprite.hitpoints = 10;
+        caulisprite.hitpoints = 6;
         caulisprite.invulnerabilityTimer = 0;
-        //caulisprite.setBounceX(1);
+        //caulisprite.setBounceX(0.25);
+        caulisprite.setDragX(4);
       });
       this.cauligroup.setVelocityX(20);
 
@@ -210,14 +216,36 @@ export default new Phaser.Class({
         mousesprite.on('animationcomplete',function () {
             if(mousesprite.anims.currentAnim.key == 'mouseshoot') {
               this.mousegroup.playAnimation('mousemove');
-              //var rightbullet = this.bulletgroupright.create(mousesprite.x+16, mousesprite.y-24, 'bullet');
-              //rightbullet.setVelocity(100,-400);
-              //var leftbullet = this.bulletgroupleft.create(mousesprite.x-16, mousesprite.y-24, 'bullet');
-              //leftbullet.setVelocity(-100,-400);
+              if(mousesprite.body.velocity.x > 0) {
+                //var rightbullet = this.bulletgroupright.create(mousesprite.x+16, mousesprite.y-16, 'bullet');
+                var rightbullet = this.physics.add.sprite(mousesprite.x+32, mousesprite.y-16, 'bullet')
+                rightbullet.body.setAllowGravity(false);
+                //rightbullet.body.setGravityY(0);
+                //rightbullet.vody.setAccelerationX(100);
+                //rightbullet.body.setMass(0.1);
+                //rightbullet.body.setVelocity(100,-500);
+                var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
+                    speed: 80
+                });
+                console.log(this.map.widthInPixels);
+                moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
+                moveTo.moveTo(this.map.widthInPixels,mousesprite.y-16)
+              }  else {
+                var leftbullet = this.bulletgroupleft.create(mousesprite.x-32, mousesprite.y-16, 'bullet');
+                leftbullet.body.setAllowGravity(false);
+                //BELOW NOT BEING USED AS MovetTo ON COMPLETE SEEMS TO DO JOB
+                //leftbullet.checkWorldBounds = true;
+                //leftbullet.outOfBoundsKill = true;
+                var moveTo = this.plugins.get('rexMoveTo').add(leftbullet, {
+                    speed: 80
+                });
+                moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
+                moveTo.moveTo(0,mousesprite.y-16);
+              }
             }
         }, this );
       });
-      this.mousegroup.setVelocityX(20);
+      this.mousegroup.setVelocityX(-20);
 
       // mouse movement
       this.anims.create({
@@ -278,6 +306,10 @@ export default new Phaser.Class({
       this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
 
@@ -447,47 +479,21 @@ export default new Phaser.Class({
 
   reverseSprite: function(sprite,boundary) {
     if(sprite.body.blocked.right) {
-      sprite.setVelocityX(-10);
+      sprite.setVelocityX(-20);
       sprite.flipX = false;
     } else {
-      sprite.setVelocityX(10);
+      sprite.setVelocityX(20);
       sprite.flipX = true;
     }
   },
 
   hitPlayer: function(player,worm) {
-    //Remove from all collision groups, change velocityY so that he flies up and play death animation
-    //Check below for a function which removes the collider by name
+    //Get the enemy sprite texture
+    var enemyTexture = worm.texture;
+    console.log(enemyTexture);
 
-    //https://www.html5gamedevs.com/topic/39026-how-do-you-remove-collidersoverlap/
-
-    //See if there is a way to identify the player ones from below
-    if(!this.playerAttack) {
-      if(worm.hitpoints == 0) {
-        //Die
-        this.deadworms.create(worm.x, worm.y, 'worm')
-        this.deadworms.playAnimation('wormmove');
-        this.deadworms.setVelocity(0,-400);
-        worm.destroy();
-      } else {
-          console.log(worm);
-          //var wormvel = worm.body.velocity.x;
-          worm.hitpoints -= 1;
-          if(worm.body.checkCollision.right) {
-            worm.body.x -= 10;
-          } else {
-            worm.body.x += 10;
-          }
-          //worm.setVelocityY(-100);
-          //worm.setVelocityX(wormvel*-1);
-          //worm.bounceTimer = 100;
-          //this.bouncing.push(worm);
-      }
-    } else {
-      //Run death sequence
-      console.log("Player Location");
-      console.log(player.x);
-      console.log(player.y);
+    if(enemyTexture.key === 'bullet' ||  enemyTexture.key === 'seed') {
+      worm.setVisible(false);
       var playerDeathX = player.x;
       var playerDeathY = player.y;
       this.playerIsDead = true;
@@ -502,6 +508,45 @@ export default new Phaser.Class({
       this.playerColliders.forEach(collider => collider.destroy());
       this.player.setVelocityX(0);
       this.player.setVelocityY(-400);
+    } else {
+      if(!this.playerAttack) {
+        if(worm.hitpoints == 0) {
+          //Die
+          this.deadworms.create(worm.x, worm.y, 'worm')
+          this.deadworms.playAnimation(enemyTexture.key+'move');
+          this.deadworms.setVelocity(0,-400);
+          worm.destroy();
+        } else {
+            console.log(worm);
+            //var wormvel = worm.body.velocity.x;
+            worm.hitpoints -= 1;
+            if(worm.body.checkCollision.right) {
+              //worm.body.x -= 10;
+            } else {
+              //worm.body.x += 10;
+            }
+            //worm.setVelocityY(-100);
+            //worm.setVelocityX(wormvel*-1);
+            //worm.bounceTimer = 100;
+            //this.bouncing.push(worm);
+        }
+      } else {
+        //Run death sequence
+        var playerDeathX = player.x;
+        var playerDeathY = player.y;
+        this.playerIsDead = true;
+        this.player.anims.play('death',true);
+        this.timer = this.time.addEvent({
+          delay: 2000,
+          callback: function() { this.scene.start('PlayerDied')},
+          callbackScope: this,
+          loop: true
+        });
+        //this.input.keyboard.removeCapture(37,38,39,40);
+        this.playerColliders.forEach(collider => collider.destroy());
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(-400);
+      }
     }
   },
 

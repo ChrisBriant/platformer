@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import Level1 from "./level1.js"
 import PlayerDied from "./playerdied.js"
+import MoveToPlugin from 'phaser3-rex-plugins/plugins/moveto-plugin.js';
 
 var config = {
     type: Phaser.AUTO,
@@ -13,7 +14,17 @@ var config = {
             debug: true
         }
     },
+    plugins: {
+        global: [{
+            key: 'rexMoveTo',
+            plugin: MoveToPlugin,
+            start: true
+        },
+        ]
+    },
     scene: [Level1,PlayerDied]
 }
 
 var game = new Phaser.Game(config);
+
+//var moveTo = scene.plugins.get('rexMoveTo').add(gameObject, config);
