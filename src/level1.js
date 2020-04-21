@@ -27,9 +27,12 @@ export default new Phaser.Class({
      //Control variables
      this.playerIsDead = false;
      this.playerAttack = false;
+     this.enemyVelocityX = 20;
+     this.crouching = false;
+     this.bouncing = false;
      this.attackTimers = [];
      //Sprites bounce off player
-     this.bouncing = [];
+     //this.bouncing = [];
 
      //Sprite groups for enemy deaths
      this.deadworms = this.physics.add.group();
@@ -81,7 +84,7 @@ export default new Phaser.Class({
       });
       this.seedgroupright.playAnimation('seedright');
 
-      this.seedgroupleft = this.physics.add.group();      //this.seedgroupright = this.physics.add.group();
+      this.seedgroupleft = this.physics.add.group();
       this.anims.create({
           key: 'seedleft',
           frames: this.anims.generateFrameNames('seed', {prefix: 'seed ',suffix: '.aseprite', start: 0, end: 3}),
@@ -145,7 +148,7 @@ export default new Phaser.Class({
         caulisprite.hitpoints = 6;
         caulisprite.invulnerabilityTimer = 0;
         //caulisprite.setBounceX(0.25);
-        caulisprite.setDragX(4);
+        //caulisprite.setDragX(4);
       });
       this.cauligroup.setVelocityX(20);
 
@@ -321,6 +324,12 @@ export default new Phaser.Class({
           frameRate: 10,
           repeat: -1
       });
+      //Stop crouching when the key changes
+      this.player.on('animationcomplete',function () {
+          if(this.player.anims.currentAnim.key == 'walk') {
+            this.crouching=false;
+          }
+      }, this );
       // player walk animation
       this.anims.create({
           key: 'idle',
@@ -342,19 +351,39 @@ export default new Phaser.Class({
           frameRate: 10,
           repeat: -1
       });
-      // player walk animation
+      // player death animation
       this.anims.create({
           key: 'death',
           frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 28, end: 33}),
           frameRate: 10,
           repeat: 0
       });
+      // player crouch animation
+      this.anims.create({
+          key: 'crouchdown',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 46, end: 52}),
+          frameRate: 10,
+          repeat: 0
+      });
+      this.anims.create({
+          key: 'crouchup',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 63, end: 69}),
+          frameRate: 10,
+          repeat: 0
+      });
+      //Stop crouching when the key changes
+      this.player.on('animationcomplete',function () {
+          if(this.player.anims.currentAnim.key == 'crouchup') {
+            this.crouching=false;
+          }
+      }, this );
 
 
 
 
       this.cursors = this.input.keyboard.createCursorKeys();
-
+      this.dkey = this.input.keyboard.addKeys(Phaser.Input.Keyboard.KeyCodes.W);
+      console.log(this.dkey);
       // set bounds so the camera won't go outside the game world
       this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
       // make the camera follow the player
@@ -378,7 +407,8 @@ export default new Phaser.Class({
   },
 
   update: function(time, delta) {
-      if(this.cursors.shift.isDown) {
+      if(this.dkey.isDown) {
+      //if(this.cursors.shift.isDown) {
         console.log("Player Location");
         console.log(this.player.x);
         console.log(this.player.y);
@@ -386,27 +416,37 @@ export default new Phaser.Class({
 
       if(!this.playerIsDead) {
 
-        //Block movement if attacking
-        if (this.cursors.left.isDown)
-        {
-            this.player.body.setVelocityX(-200);
-            if(!this.playerAttack) {
-              this.player.anims.play('walk', true); // walk left
-            }
-            this.player.flipX = true; // flip the sprite to the left
-        }
-        else if (this.cursors.right.isDown)
-        {
-            this.player.body.setVelocityX(200);
-            if(!this.playerAttack) {
-              this.player.anims.play('walk', true);
-            }
-            this.player.flipX = false; // use the original sprite looking to the right
+        if(this.cursors.down.isDown && !this.crouching) {
+          //Crouching
+          this.player.body.setVelocityX(0);
+          this.player.anims.play('crouchdown', true);
+          this.crouching = true;
+        } else if (this.cursors.down.isUp && this.crouching) {
+          this.player.body.setVelocityX(0);
+          this.player.anims.play('crouchup', true);
         } else {
-            this.player.body.setVelocityX(0);
-            if(!this.playerAttack) {
-              this.player.anims.play('idle', true);
-            }
+          //Normal Movement
+          if (this.cursors.left.isDown)
+          {
+              this.player.body.setVelocityX(-200);
+              if(!this.playerAttack) {
+                this.player.anims.play('walk', true); // walk left
+              }
+              this.player.flipX = true; // flip the sprite to the left
+          }
+          else if (this.cursors.right.isDown)
+          {
+              this.player.body.setVelocityX(200);
+              if(!this.playerAttack) {
+                this.player.anims.play('walk', true);
+              }
+              this.player.flipX = false; // use the original sprite looking to the right
+          } else {
+              this.player.body.setVelocityX(0);
+              if(!this.playerAttack && !this.crouching) {
+                this.player.anims.play('idle', true);
+              }
+          }
         }
         // jump
         if (this.cursors.up.isDown && this.player.body.onFloor())
@@ -434,6 +474,21 @@ export default new Phaser.Class({
         if(destroyWorms.length > 0) {
           destroyWorms.forEach(worm => worm.destroy());
         }
+
+        /*
+        var spritesWithIncorrectVelocity = this.cauligroup.children.entries.filter(child => child.body.velocity.x != this.enemyVelocityX || child.body.velocity.x != (this.enemyVelocityX * -1));
+        for(var i=0;i<spritesWithIncorrectVelocity .length;i++) {
+          if(spritesWithIncorrectVelocity.length > 0) {
+            console.log("Sprites Exist")
+          }
+          if (spritesWithIncorrectVelocity[i].body.velocity.x < this.enemyVelocityX) {
+            spritesWithIncorrectVelocity[i].setAccelerationX(20);
+          } else if (spritesWithIncorrectVelocity[i].body.velocity.x > this.enemyVelocityX) {
+            spritesWithIncorrectVelocity[i].setAccelerationX(-20);
+          } else {
+            spritesWithIncorrectVelocity[i].setAccelerationX(0);
+          }
+        }*/
 
         //Bounce back sprites
         /*
@@ -520,11 +575,40 @@ export default new Phaser.Class({
             console.log(worm);
             //var wormvel = worm.body.velocity.x;
             worm.hitpoints -= 1;
-            if(worm.body.checkCollision.right) {
-              //worm.body.x -= 10;
-            } else {
-              //worm.body.x += 10;
+
+
+            if(!this.bouncing) {
+              this.bouncing = true;
+
+              this.enemyBounceBackTimer = this.time.addEvent({
+                delay: 500,
+                callback: function() {
+                    if(worm.hitpoints > 0) {
+                      worm.setVelocityX(worm.body.velocity.x * -1);
+                      this.bouncing = false;
+                    }
+                },
+                callbackScope: this,
+                loop: false
+              });
             }
+
+            /*
+            if (worm.body.velocity.x < this.enemyVelocityX) {
+              worm.setAccelerationX(20);
+            } else if (worm.body.velocity.x > this.enemyVelocityX) {
+              worm.setAccelerationX(-20);
+            } else {
+              worm.setAccelerationX(0);
+            }*/
+
+            //worm.setVelocityY(0,-100);
+            /*
+            if(worm.body.checkCollision.right) {
+              worm.body.x -= 10;
+            } else {
+              worm.body.x += 10;
+            }*/
             //worm.setVelocityY(-100);
             //worm.setVelocityX(wormvel*-1);
             //worm.bounceTimer = 100;
