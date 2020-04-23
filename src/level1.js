@@ -21,6 +21,7 @@ export default new Phaser.Class({
         this.load.atlas('mouse', 'assets/mouse.png', 'assets/mouse.json');
         this.load.atlas('seed', 'assets/seed.png', 'assets/seed.json');
         this.load.atlas('bullet', 'assets/bullet.png', 'assets/bullet.json');
+        this.load.image('playerbullet', 'assets/tailbomb.png');
     },
 
    create: function() {
@@ -29,6 +30,7 @@ export default new Phaser.Class({
      this.playerAttack = false;
      this.enemyVelocityX = 20;
      this.crouching = false;
+     this.shooting = false;
      this.bouncing = false;
      this.attackTimers = [];
      //Sprites bounce off player
@@ -61,6 +63,7 @@ export default new Phaser.Class({
       console.log(this.map.heightInPixels);
       //Default
       this.player = this.physics.add.sprite(173,7172, 'player');
+      this.player.facingRight = true;
       //this.player = this.physics.add.sprite(449,1998, 'player')
       //Near tuplips
       //this.player = this.physics.add.sprite(449,1998, 'player');
@@ -113,7 +116,9 @@ export default new Phaser.Class({
           repeat: -1
       });
       this.bulletgroupleft.playAnimation('bulletleft');
-      //this.bulletgroupright.setGravity(0);
+
+      this.playerbullet = this.physics.add.group();
+
       console.log(this.anims);
 
       // create the worm sprite
@@ -145,7 +150,7 @@ export default new Phaser.Class({
 
       caulis.forEach(cauli => {
         var caulisprite = this.cauligroup.create(cauli.x, cauli.y-18, 'cauli');
-        caulisprite.hitpoints = 6;
+        caulisprite.hitpoints = 1;
         caulisprite.invulnerabilityTimer = 0;
         //caulisprite.setBounceX(0.25);
         //caulisprite.setDragX(4);
@@ -220,25 +225,16 @@ export default new Phaser.Class({
             if(mousesprite.anims.currentAnim.key == 'mouseshoot') {
               this.mousegroup.playAnimation('mousemove');
               if(mousesprite.body.velocity.x > 0) {
-                //var rightbullet = this.bulletgroupright.create(mousesprite.x+16, mousesprite.y-16, 'bullet');
                 var rightbullet = this.physics.add.sprite(mousesprite.x+32, mousesprite.y-16, 'bullet')
                 rightbullet.body.setAllowGravity(false);
-                //rightbullet.body.setGravityY(0);
-                //rightbullet.vody.setAccelerationX(100);
-                //rightbullet.body.setMass(0.1);
-                //rightbullet.body.setVelocity(100,-500);
                 var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
                     speed: 80
                 });
-                console.log(this.map.widthInPixels);
                 moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
                 moveTo.moveTo(this.map.widthInPixels,mousesprite.y-16)
               }  else {
                 var leftbullet = this.bulletgroupleft.create(mousesprite.x-32, mousesprite.y-16, 'bullet');
                 leftbullet.body.setAllowGravity(false);
-                //BELOW NOT BEING USED AS MovetTo ON COMPLETE SEEMS TO DO JOB
-                //leftbullet.checkWorldBounds = true;
-                //leftbullet.outOfBoundsKill = true;
                 var moveTo = this.plugins.get('rexMoveTo').add(leftbullet, {
                     speed: 80
                 });
@@ -313,6 +309,11 @@ export default new Phaser.Class({
       this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
+      //Player bullets colliders
+      this.physics.add.collider(this.playerbullet, this.wormgroup,this.enemyShot,null,this);
+      this.physics.add.collider(this.playerbullet, this.cauligroup,this.enemyShot,null,this);
+      this.physics.add.collider(this.playerbullet, this.tulipgroup,this.enemyShot,null,this);
+      this.physics.add.collider(this.playerbullet, this.mousegroup,this.enemyShot,null,this);
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
 
@@ -377,13 +378,72 @@ export default new Phaser.Class({
             this.crouching=false;
           }
       }, this );
+      this.anims.create({
+          key: 'standshoot',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 34, end: 45}),
+          frameRate: 10,
+          repeat: 0
+      });
+      this.anims.create({
+          key: 'crouchshoot',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 53, end: 62}),
+          frameRate: 10,
+          repeat: 0
+      });
+      console.log('player');
+      console.log(this.player);
+      this.player.on('animationcomplete',function () {
+          if(this.player.anims.currentAnim.key == 'standshoot' || this.player.anims.currentAnim.key == 'crouchshoot') {
+            this.shooting=false;
+            if(this.player.facingRight) {
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                var rightbullet = this.playerbullet.create(this.player.x+32, this.player.y-14, 'playerbullet');
+              } else {
+                var rightbullet = this.playerbullet.create(this.player.x+32, this.player.y+20, 'playerbullet');
+              }
+              rightbullet.body.setAllowGravity(false);
+              var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
+                  speed: 80
+              });
+              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                moveTo.moveTo(this.map.widthInPixels,this.player.y-14)
+              } else {
+                moveTo.moveTo(this.map.widthInPixels,this.player.y+20);
+              }
+            } else {
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                var leftbullet = this.playerbullet.create(this.player.x-32, this.player.y-14, 'playerbullet');
+              } else {
+                var leftbullet = this.playerbullet.create(this.player.x-32, this.player.y+20, 'playerbullet');
+              }
+              leftbullet.body.setAllowGravity(false);
+              var moveTo = this.plugins.get('rexMoveTo').add(leftbullet, {
+                  speed: 80
+              });
+              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                moveTo.moveTo(0,this.player.y-14);
+              } else {
+                moveTo.moveTo(0,this.player.y+20);
+              }
+            }
+          }
+      }, this );
+
 
 
 
 
       this.cursors = this.input.keyboard.createCursorKeys();
-      this.dkey = this.input.keyboard.addKeys(Phaser.Input.Keyboard.KeyCodes.W);
-      console.log(this.dkey);
+      //this.dkey = this.input.keyboard.addKeys(Phaser.Input.Keyboard.KeyCodes.W);
+      //console.log(this.dkey);
+      this.input.keyboard.on('keydown_ENTER', function (event) {
+          console.log("Player Location");
+          console.log(this.player.x);
+          console.log(this.player.y);
+      });
+
       // set bounds so the camera won't go outside the game world
       this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
       // make the camera follow the player
@@ -407,45 +467,49 @@ export default new Phaser.Class({
   },
 
   update: function(time, delta) {
-      if(this.dkey.isDown) {
-      //if(this.cursors.shift.isDown) {
-        console.log("Player Location");
-        console.log(this.player.x);
-        console.log(this.player.y);
-      }
 
       if(!this.playerIsDead) {
 
-        if(this.cursors.down.isDown && !this.crouching) {
-          //Crouching
-          this.player.body.setVelocityX(0);
-          this.player.anims.play('crouchdown', true);
-          this.crouching = true;
-        } else if (this.cursors.down.isUp && this.crouching) {
-          this.player.body.setVelocityX(0);
-          this.player.anims.play('crouchup', true);
+        if(this.cursors.shift.isDown && !this.crouching) {
+          this.player.anims.play('standshoot', true);
+          this.shooting = true;
+        } else if (this.cursors.shift.isDown && this.crouching) {
+          this.player.anims.play('crouchshoot', true);
         } else {
-          //Normal Movement
-          if (this.cursors.left.isDown)
-          {
-              this.player.body.setVelocityX(-200);
-              if(!this.playerAttack) {
-                this.player.anims.play('walk', true); // walk left
-              }
-              this.player.flipX = true; // flip the sprite to the left
-          }
-          else if (this.cursors.right.isDown)
-          {
-              this.player.body.setVelocityX(200);
-              if(!this.playerAttack) {
-                this.player.anims.play('walk', true);
-              }
-              this.player.flipX = false; // use the original sprite looking to the right
+
+          if(this.cursors.down.isDown && !this.crouching) {
+            //Crouching
+            this.player.body.setVelocityX(0);
+            this.player.anims.play('crouchdown', true);
+            this.crouching = true;
+          } else if (this.cursors.down.isUp && this.crouching) {
+            this.player.body.setVelocityX(0);
+            this.player.anims.play('crouchup', true);
           } else {
-              this.player.body.setVelocityX(0);
-              if(!this.playerAttack && !this.crouching) {
-                this.player.anims.play('idle', true);
-              }
+            //Normal Movement
+            if (this.cursors.left.isDown)
+            {
+                this.player.body.setVelocityX(-200);
+                if(!this.playerAttack) {
+                  this.player.anims.play('walk', true); // walk left
+                }
+                this.player.flipX = true; // flip the sprite to the left
+                this.player.facingRight = false;
+            }
+            else if (this.cursors.right.isDown)
+            {
+                this.player.body.setVelocityX(200);
+                if(!this.playerAttack) {
+                  this.player.anims.play('walk', true);
+                }
+                this.player.flipX = false; // use the original sprite looking to the right
+                this.player.facingRight = true;
+            } else {
+                this.player.body.setVelocityX(0);
+                if(!this.playerAttack && !this.crouching && !this.shooting) {
+                  this.player.anims.play('idle', true);
+                }
+            }
           }
         }
         // jump
@@ -649,6 +713,21 @@ export default new Phaser.Class({
   //Destroy a projectile sprite if it hits an obsticle
   destroySprite: function(sprite,platform) {
     sprite.destroy();
+  },
+
+  enemyShot: function(bullet,sprite) {
+    var enemyTexture = sprite.texture;
+    bullet.setVisible(false);
+
+    if(sprite.hitpoints <= 0) {
+      //Die
+      this.deadworms.create(sprite.x, sprite.y, enemyTexture.key);
+      this.deadworms.playAnimation(enemyTexture.key+'move');
+      this.deadworms.setVelocity(0,-400);
+      sprite.destroy();
+    } else {
+      sprite.hitpoints--;
+    }
   }
 
 });
