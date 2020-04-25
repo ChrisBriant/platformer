@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import Level1 from "./level1.js"
 import PlayerDied from "./playerdied.js"
 import MoveToPlugin from 'phaser3-rex-plugins/plugins/moveto-plugin.js';
+import WebfontLoaderPlugin from 'phaser3-rex-plugins/plugins/webfontloader-plugin.js';
 
 var config = {
     type: Phaser.AUTO,
@@ -20,6 +21,11 @@ var config = {
             plugin: MoveToPlugin,
             start: true
         },
+        {
+            key: 'rexWebfontLoader',
+            plugin: WebfontLoaderPlugin,
+            start: true
+        }
         ]
     },
     scene: [Level1,PlayerDied]

@@ -9,6 +9,13 @@ export default new Phaser.Class({
     },
 
     preload: function () {
+        this.load.rexWebFont({
+          google: {
+              families: ['Fontdiner Swanky','Bangers']
+          },
+          // testString: undefined,
+          // testInterval: 20,
+        });
         // map made with Tiled in JSON format
         this.load.tilemapTiledJSON('map', 'assets/bof5.json');
         // tiles in spritesheet
@@ -20,9 +27,13 @@ export default new Phaser.Class({
         this.load.atlas('tulip', 'assets/tulip.png', 'assets/tulip.json');
         this.load.atlas('mouse', 'assets/mouse.png', 'assets/mouse.json');
         this.load.atlas('seed', 'assets/seed.png', 'assets/seed.json');
+        this.load.atlas('diamond', 'assets/diamond.png', 'assets/diamond.json');
         this.load.atlas('bullet', 'assets/bullet.png', 'assets/bullet.json');
         this.load.image('tailbombicon', 'assets/tailbombtile.png');
+        this.load.image('lifeicon', 'assets/life.png');
         this.load.image('playerbullet', 'assets/tailbomb.png');
+        //For player death
+        this.load.script('webfont', 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js');
     },
 
    create: function() {
@@ -30,13 +41,16 @@ export default new Phaser.Class({
      this.playerIsDead = false;
      this.playerAttack = false;
      this.canShoot = false;
+     this.score = 0;
      this.enemyVelocityX = 20;
      this.crouching = false;
      this.shooting = false;
      this.bouncing = false;
      this.attackTimers = [];
-     //Sprites bounce off player
-     //this.bouncing = [];
+     this.playDeathText = false;
+     this.playerRespawnX = 0;
+     this.playerRespawnY = 0;
+     this.invulnerable = false;
 
      //Sprite groups for enemy deaths
      this.deadworms = this.physics.add.group();
@@ -64,19 +78,21 @@ export default new Phaser.Class({
       // create the player sprite
       console.log(this.map.heightInPixels);
       //Default
+      this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
       //Near tailbomb
-      this.player = this.physics.add.sprite(325,5796, 'player');
+      //this.player = this.physics.add.sprite(325,5796, 'player');
       //Near cauliflower
       //this.player = this.physics.add.sprite(173,7172, 'player');
-      this.player.facingRight = true;
+
       //this.player = this.physics.add.sprite(449,1998, 'player')
       //Near tuplips
-      //this.player = this.physics.add.sprite(449,1998, 'player');
+      //this.player = this.physics.add.sprite(275,2084, 'player');
       //Near Mouse
       //this.player = this.physics.add.sprite(190,836, 'player');
-
+      this.player.facingRight = true;
       this.player.setBounce(0.2); // our player will bounce from items
       this.player.setCollideWorldBounds(true); // don't go out of the map
+      this.player.lives = 9;
 
       //var thewormtest = this.physics.add.sprite(450,this.map.heightInPixels-300, 'worm')
       //thewormtest.body.setSize(200,200);
@@ -134,11 +150,37 @@ export default new Phaser.Class({
         var tailbomb = this.tailbombicongroup.create(icon.x, icon.y-18, 'tailbombicon');
         tailbomb.setBounce(0.4);
       });
+
+      var lives = this.map.getObjectLayer('lives')['objects'];
+      this.lifeicongroup = this.physics.add.group();
+
+      lives.forEach(icon => {
+        var life = this.lifeicongroup.create(icon.x, icon.y-18, 'lifeicon');
+        life.setBounce(0.4);
+      });
+
+      var diamonds = this.map.getObjectLayer('diamonds')['objects'];
+      this.diamondgroup = this.physics.add.group();
+
+      diamonds.forEach(icon => {
+        var diamond = this.diamondgroup.create(icon.x, icon.y-18, 'diamond');
+        diamond.body.setAllowGravity(false);
+      });
+      //Rotate diamond
+      this.anims.create({
+          key: 'diamond',
+          frames: this.anims.generateFrameNames('diamond', {prefix: 'diamond2 ',suffix: '.aseprite', start: 0, end: 12}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.diamondgroup.playAnimation('diamond');
+
       //bounce icons every so often
       this.iconBounceTimer = this.time.addEvent({
         delay: 2000,
         callback: function() {
           this.tailbombicongroup.setVelocityY(-200);
+          this.lifeicongroup.setVelocityY(-200);
         },
         callbackScope: this,
         loop: true
@@ -151,6 +193,7 @@ export default new Phaser.Class({
       worms.forEach(worm => {
         var wormsprite = this.wormgroup.create(worm.x, worm.y-18, 'worm');
         wormsprite.hitpoints = 0;
+        wormsprite.scoreval = 20;
         wormsprite.invulnerabilityTimer = 0;
         wormsprite.setVelocityX(10);
         wormsprite.flipX = true;
@@ -174,6 +217,7 @@ export default new Phaser.Class({
       caulis.forEach(cauli => {
         var caulisprite = this.cauligroup.create(cauli.x, cauli.y-18, 'cauli');
         caulisprite.hitpoints = 1;
+        caulisprite.scoreval = 40;
         caulisprite.invulnerabilityTimer = 0;
         //caulisprite.setBounceX(0.25);
         //caulisprite.setDragX(4);
@@ -196,7 +240,8 @@ export default new Phaser.Class({
 
       tulips.forEach(tulip => {
         var tulipsprite = this.tulipgroup.create(tulip.x, tulip.y-18, 'tulip');
-        tulipsprite.hitpoints = 10;
+        tulipsprite.hitpoints = 0;
+        tulipsprite.scoreval = 80;
         tulipsprite.on('animationcomplete',function () {
             if(tulipsprite.anims.currentAnim.key == 'tulipshoot') {
               this.tulipgroup.playAnimation('tulipmove');
@@ -243,7 +288,8 @@ export default new Phaser.Class({
 
       mice.forEach(mouse => {
         var mousesprite = this.mousegroup.create(mouse.x, mouse.y-18, 'mouse');
-        mousesprite.hitpoints = 10;
+        mousesprite.hitpoints = 2;
+        mousesprite.scoreval = 100;
         mousesprite.on('animationcomplete',function () {
             if(mousesprite.anims.currentAnim.key == 'mouseshoot') {
               this.mousegroup.playAnimation('mousemove');
@@ -318,6 +364,7 @@ export default new Phaser.Class({
       this.physics.add.collider(this.platformLayer, this.tulipgroup);
       this.physics.add.collider(this.platformLayer, this.mousegroup);
       this.physics.add.collider(this.platformLayer, this.tailbombicongroup);
+      this.physics.add.collider(this.platformLayer, this.lifeicongroup);
       this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
       this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
       this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
@@ -345,6 +392,14 @@ export default new Phaser.Class({
       this.physics.add.overlap(this.player, this.tailbombicongroup,function(player,sprite) {
         sprite.destroy();
         this.canShoot = true;
+      },null,this);
+      this.physics.add.overlap(this.player, this.lifeicongroup,function(player,sprite) {
+        sprite.destroy();
+        this.player.lives++;
+      },null,this);
+      this.physics.add.overlap(this.player, this.diamondgroup,function(player,sprite) {
+        sprite.destroy();
+        this.score+=10;
       },null,this);
 
 
@@ -484,12 +539,52 @@ export default new Phaser.Class({
       this.cameras.main.setBackgroundColor('#ccccff');
 
       // this text will show the score
-      this.text = this.add.text(20, 570, '0', {
+      this.scoretext = this.add.text(120, 10, 'Score ' + this.score, {
           fontSize: '20px',
           fill: '#ffffff'
       });
       // fix the text to the camera
-      this.text.setScrollFactor(0);
+      this.scoretext.setScrollFactor(0);
+
+      //Add the screen text
+      this.lifetext = this.add.text(10, 10, 'Lives ' + this.player.lives, {
+          fontSize: '20px',
+          fill: '#ffffff'
+      });
+      this.lifetext.setScrollFactor(0);
+
+      //Death text
+      this.deathtextcounter = 0;
+      //this.lvltxt;
+      //var thisscene = this;
+      /*
+      this.lvltext = this.add.text(100, 100, 'LEVEL TEXT ', {
+          fontSize: '20px',
+          fill: '#ffffff'
+      });
+
+      */
+      //var lvltxt = this.lvltxt;
+
+      /*
+      WebFont.load({
+          google: {
+              families: [ 'Faster One', 'Finger Paint', 'Nosifer','Fontdiner Swanky' ]
+          },
+          active: function () {
+            console.log("ACTIVE");
+            console.log(thisscene.lvltxt);
+            /*
+
+
+          }
+      });
+      */
+      this.lvltxt = this.add.text(200, -100, 'You Died', { fontFamily: 'Fontdiner Swanky', fontSize: 60, color: '#7b4585' });
+      this.lvltxt.setStroke('#bbbe4b',8);
+      this.lvltxt.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
+      this.lvltxt.setScrollFactor(0);
+
   },
 
   // this function will be called when the player touches a coin
@@ -498,6 +593,9 @@ export default new Phaser.Class({
   },
 
   update: function(time, delta) {
+      //Update on screen text
+      this.lifetext.setText("Lives " + this.player.lives);
+      this.scoretext.setText("Score " + this.score);
 
       if(!this.playerIsDead) {
         //For shooting
@@ -599,7 +697,57 @@ export default new Phaser.Class({
           }
         }*/
       } else {
-        //this.player.anims.play('death',true);
+        if(this.playDeathText) {
+          if(this.deathtextcounter==0) {
+            //this.playerColliders.forEach(collider => collider.active = true);
+            //this.player.checkCollision.none = false;
+          }
+
+          if(this.deathtextcounter < 190) {
+            this.deathtextcounter += 5;
+            this.lvltxt.setPosition(200,this.deathtextcounter);
+          }
+          if(this.cursors.space.isDown) {
+            this.playerColliders.forEach(collider =>
+              collider.active = true
+            );
+
+            //reset text
+            console.log(this.player);
+            player.setAllowGravity(false);
+            this.invulnerable = true;
+            this.invulnerableTimer = this.time.addEvent({
+              delay: 2000,
+              callback: function() { this.invulnerable = false; },
+              callbackScope: this,
+              loop: false
+            });
+            this.deathtextcounter = 0;
+            this.playDeathText = false;
+            this.lvltxt.setPosition(200,-100);
+            this.player.anims.play('idle',true);
+            //this.playerColliders.forEach(collider => collider.active = true);
+            //respawn the player - recreate the colliders
+            /*
+            this.playerColliders = [];
+            this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
+            this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
+            this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
+            */
+            //this.player.setPosition(this.playerRespawnX,this.playerRespawnY);
+            this.player.body.x = this.playerRespawnX;
+            this.player.body.y = this.playerRespawnY-42;
+            this.playerIsDead = false;
+          }
+        }
+        console.log(this.playerRespawnY);
+
       }
 
   },
@@ -646,24 +794,29 @@ export default new Phaser.Class({
       worm.setVisible(false);
       var playerDeathX = player.x;
       var playerDeathY = player.y;
+      this.playerRespawnX = player.x;
+      this.playerRespawnY = player.y;
       this.playerIsDead = true;
       this.player.anims.play('death',true);
       this.timer = this.time.addEvent({
         delay: 2000,
-        callback: function() { this.scene.start('PlayerDied')},
+        callback: function() { this.playDeathText=true; },
         callbackScope: this,
         loop: true
       });
       //this.input.keyboard.removeCapture(37,38,39,40);
-      this.playerColliders.forEach(collider => collider.destroy());
+      this.playerColliders.forEach(collider => collider.active = false);
+      //this.player.checkCollision.none = true;
       this.player.setVelocityX(0);
       this.player.setVelocityY(-400);
     } else {
-      if(!this.playerAttack) {
+      if(this.playerAttack) {
         if(worm.hitpoints == 0) {
           //Die
-          this.deadworms.create(worm.x, worm.y, 'worm')
-          this.deadworms.playAnimation(enemyTexture.key+'move');
+          var sprite = this.deadworms.create(worm.x, worm.y, 'worm');
+          sprite.anims.play(enemyTexture.key+'move');
+          this.score += worm.scoreval;
+          //this.deadworms.playAnimation(enemyTexture.key+'move');
           this.deadworms.setVelocity(0,-400);
           worm.destroy();
         } else {
@@ -687,44 +840,28 @@ export default new Phaser.Class({
                 loop: false
               });
             }
-
-            /*
-            if (worm.body.velocity.x < this.enemyVelocityX) {
-              worm.setAccelerationX(20);
-            } else if (worm.body.velocity.x > this.enemyVelocityX) {
-              worm.setAccelerationX(-20);
-            } else {
-              worm.setAccelerationX(0);
-            }*/
-
-            //worm.setVelocityY(0,-100);
-            /*
-            if(worm.body.checkCollision.right) {
-              worm.body.x -= 10;
-            } else {
-              worm.body.x += 10;
-            }*/
-            //worm.setVelocityY(-100);
-            //worm.setVelocityX(wormvel*-1);
-            //worm.bounceTimer = 100;
-            //this.bouncing.push(worm);
         }
       } else {
-        //Run death sequence
-        var playerDeathX = player.x;
-        var playerDeathY = player.y;
-        this.playerIsDead = true;
-        this.player.anims.play('death',true);
-        this.timer = this.time.addEvent({
-          delay: 2000,
-          callback: function() { this.scene.start('PlayerDied')},
-          callbackScope: this,
-          loop: true
-        });
-        //this.input.keyboard.removeCapture(37,38,39,40);
-        this.playerColliders.forEach(collider => collider.destroy());
-        this.player.setVelocityX(0);
-        this.player.setVelocityY(-400);
+        if(!this.invulnerable) {
+          //Run death sequence
+          var playerDeathX = player.x;
+          var playerDeathY = player.y;
+          this.playerIsDead = true;
+          this.playerRespawnX = player.x;
+          this.playerRespawnY = player.y;
+          this.player.anims.play('death',true);
+          this.timer = this.time.addEvent({
+            delay: 2000,
+            callback: function() { this.playDeathText = true; },
+            callbackScope: this,
+            loop: true
+          });
+          //this.input.keyboard.removeCapture(37,38,39,40);
+          this.playerColliders.forEach(collider => collider.active = false);
+          //this.player.checkCollision.none = true;
+          this.player.setVelocityX(0);
+          this.player.setVelocityY(-400);
+        }
       }
     }
   },
@@ -755,6 +892,7 @@ export default new Phaser.Class({
       this.deadworms.create(sprite.x, sprite.y, enemyTexture.key);
       this.deadworms.playAnimation(enemyTexture.key+'move');
       this.deadworms.setVelocity(0,-400);
+      this.score += sprite.scoreval;
       sprite.destroy();
     } else {
       sprite.hitpoints--;
