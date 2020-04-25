@@ -10,7 +10,7 @@ export default new Phaser.Class({
 
     preload: function () {
         // map made with Tiled in JSON format
-        this.load.tilemapTiledJSON('map', 'assets/bof4.json');
+        this.load.tilemapTiledJSON('map', 'assets/bof5.json');
         // tiles in spritesheet
         this.load.spritesheet('world1tileset2', 'assets/world1tileset2.png', {frameWidth: 32, frameHeight: 32});
         // player animations
@@ -21,6 +21,7 @@ export default new Phaser.Class({
         this.load.atlas('mouse', 'assets/mouse.png', 'assets/mouse.json');
         this.load.atlas('seed', 'assets/seed.png', 'assets/seed.json');
         this.load.atlas('bullet', 'assets/bullet.png', 'assets/bullet.json');
+        this.load.image('tailbombicon', 'assets/tailbombtile.png');
         this.load.image('playerbullet', 'assets/tailbomb.png');
     },
 
@@ -28,6 +29,7 @@ export default new Phaser.Class({
      //Control variables
      this.playerIsDead = false;
      this.playerAttack = false;
+     this.canShoot = false;
      this.enemyVelocityX = 20;
      this.crouching = false;
      this.shooting = false;
@@ -62,7 +64,10 @@ export default new Phaser.Class({
       // create the player sprite
       console.log(this.map.heightInPixels);
       //Default
-      this.player = this.physics.add.sprite(173,7172, 'player');
+      //Near tailbomb
+      this.player = this.physics.add.sprite(325,5796, 'player');
+      //Near cauliflower
+      //this.player = this.physics.add.sprite(173,7172, 'player');
       this.player.facingRight = true;
       //this.player = this.physics.add.sprite(449,1998, 'player')
       //Near tuplips
@@ -120,6 +125,24 @@ export default new Phaser.Class({
       this.playerbullet = this.physics.add.group();
 
       console.log(this.anims);
+
+      //Collectibles
+      var tailbombs = this.map.getObjectLayer('tailbombicon')['objects'];
+      this.tailbombicongroup = this.physics.add.group();
+
+      tailbombs.forEach(icon => {
+        var tailbomb = this.tailbombicongroup.create(icon.x, icon.y-18, 'tailbombicon');
+        tailbomb.setBounce(0.4);
+      });
+      //bounce icons every so often
+      this.iconBounceTimer = this.time.addEvent({
+        delay: 2000,
+        callback: function() {
+          this.tailbombicongroup.setVelocityY(-200);
+        },
+        callbackScope: this,
+        loop: true
+      });
 
       // create the worm sprite
       var worms = this.map.getObjectLayer('worms')['objects'];
@@ -294,6 +317,7 @@ export default new Phaser.Class({
       this.physics.add.collider(this.platformLayer, this.cauligroup);
       this.physics.add.collider(this.platformLayer, this.tulipgroup);
       this.physics.add.collider(this.platformLayer, this.mousegroup);
+      this.physics.add.collider(this.platformLayer, this.tailbombicongroup);
       this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
       this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
       this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
@@ -314,8 +338,14 @@ export default new Phaser.Class({
       this.physics.add.collider(this.playerbullet, this.cauligroup,this.enemyShot,null,this);
       this.physics.add.collider(this.playerbullet, this.tulipgroup,this.enemyShot,null,this);
       this.physics.add.collider(this.playerbullet, this.mousegroup,this.enemyShot,null,this);
+      //Player on over icon
+
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
+      this.physics.add.overlap(this.player, this.tailbombicongroup,function(player,sprite) {
+        sprite.destroy();
+        this.canShoot = true;
+      },null,this);
 
 
       // player walk animation
@@ -405,7 +435,7 @@ export default new Phaser.Class({
               var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
                   speed: 80
               });
-              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
+              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); console.log(gameObject) });
               if (this.player.anims.currentAnim.key == 'standshoot'){
                 moveTo.moveTo(this.map.widthInPixels,this.player.y-14)
               } else {
@@ -438,10 +468,11 @@ export default new Phaser.Class({
       this.cursors = this.input.keyboard.createCursorKeys();
       //this.dkey = this.input.keyboard.addKeys(Phaser.Input.Keyboard.KeyCodes.W);
       //console.log(this.dkey);
+      var thePlayer = this.player;
       this.input.keyboard.on('keydown_ENTER', function (event) {
           console.log("Player Location");
-          console.log(this.player.x);
-          console.log(this.player.y);
+          console.log(thePlayer.x);
+          console.log(thePlayer.y);
       });
 
       // set bounds so the camera won't go outside the game world
@@ -469,11 +500,11 @@ export default new Phaser.Class({
   update: function(time, delta) {
 
       if(!this.playerIsDead) {
-
-        if(this.cursors.shift.isDown && !this.crouching) {
+        //For shooting
+        if(this.cursors.shift.isDown && !this.crouching && this.canShoot) {
           this.player.anims.play('standshoot', true);
           this.shooting = true;
-        } else if (this.cursors.shift.isDown && this.crouching) {
+        } else if (this.cursors.shift.isDown && this.crouching && this.canShoot) {
           this.player.anims.play('crouchshoot', true);
         } else {
 
