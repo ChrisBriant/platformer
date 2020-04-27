@@ -36,6 +36,180 @@ export default new Phaser.Class({
         this.load.script('webfont', 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js');
     },
 
+    static createPlayer: {
+      this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
+      this.player.facingRight = true;
+      this.player.setBounce(0.2); // our player will bounce from items
+      this.player.setCollideWorldBounds(true); // don't go out of the map
+      this.player.lives = 9;
+      this.player.body.setSize(this.player.width, this.player.height-8);
+
+    },
+
+    static setColliders: {
+      // player will collide with the level tiles
+      this.playerColliders = [];
+
+      this.physics.add.collider(this.platformLayer, this.wormgroup);
+      this.physics.add.collider(this.platformLayer, this.cauligroup);
+      this.physics.add.collider(this.platformLayer, this.tulipgroup);
+      this.physics.add.collider(this.platformLayer, this.mousegroup);
+      this.physics.add.collider(this.platformLayer, this.tailbombicongroup);
+      this.physics.add.collider(this.platformLayer, this.lifeicongroup);
+      this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
+      this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
+      this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
+      this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
+      this.physics.add.collider(this.platformBoundaries, this.cauligroup,this.reverseSprite,null,this);
+      this.physics.add.collider(this.platformBoundaries, this.mousegroup,this.reverseSprite,null,this);
+      //Enemy collisions
+      this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
+      //Player bullets colliders
+      this.physics.add.collider(this.playerbullet, this.wormgroup,this.enemyShot,null,this);
+      this.physics.add.collider(this.playerbullet, this.cauligroup,this.enemyShot,null,this);
+      this.physics.add.collider(this.playerbullet, this.tulipgroup,this.enemyShot,null,this);
+      this.physics.add.collider(this.playerbullet, this.mousegroup,this.enemyShot,null,this);
+      //Player on over icon
+
+      // when the player overlaps with a tile with index 17, collectCoin
+      // will be called
+      this.physics.add.overlap(this.player, this.tailbombicongroup,function(player,sprite) {
+        sprite.destroy();
+        this.canShoot = true;
+      },null,this);
+      this.physics.add.overlap(this.player, this.lifeicongroup,function(player,sprite) {
+        sprite.destroy();
+        this.player.lives++;
+      },null,this);
+      this.physics.add.overlap(this.player, this.diamondgroup,function(player,sprite) {
+        sprite.destroy();
+        this.score+=10;
+      },null,this);
+    },
+
+
+    static setPlayerAnims: {
+      // player walk animation
+      this.anims.create({
+          key: 'walk',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 0, end: 16}),
+          frameRate: 10,
+          repeat: -1
+      });
+      //Stop crouching when the key changes
+      this.player.on('animationcomplete',function () {
+          if(this.player.anims.currentAnim.key == 'walk') {
+            this.crouching=false;
+          }
+      }, this );
+      // player walk animation
+      this.anims.create({
+          key: 'idle',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 16, end: 16}),
+          frameRate: 10,
+          repeat: 0
+      });
+      // player walk animation
+      this.anims.create({
+          key: 'jump',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 19, end: 19}),
+          frameRate: 10,
+          repeat: 0
+      });
+      // player walk animation
+      this.anims.create({
+          key: 'tailwhip',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 20, end: 27}),
+          frameRate: 10,
+          repeat: -1
+      });
+      // player death animation
+      this.anims.create({
+          key: 'death',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 28, end: 33}),
+          frameRate: 10,
+          repeat: 0
+      });
+      // player crouch animation
+      this.anims.create({
+          key: 'crouchdown',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 46, end: 52}),
+          frameRate: 10,
+          repeat: 0
+      });
+      this.anims.create({
+          key: 'crouchup',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 63, end: 69}),
+          frameRate: 10,
+          repeat: 0
+      });
+      //Stop crouching when the key changes
+      this.player.on('animationcomplete',function () {
+          if(this.player.anims.currentAnim.key == 'crouchup') {
+            this.crouching=false;
+          }
+      }, this );
+      this.anims.create({
+          key: 'standshoot',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 34, end: 45}),
+          frameRate: 10,
+          repeat: 0
+      });
+      this.anims.create({
+          key: 'crouchshoot',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 53, end: 62}),
+          frameRate: 10,
+          repeat: 0
+      });
+      console.log('player');
+      console.log(this.player);
+      this.player.on('animationcomplete',function () {
+          if(this.player.anims.currentAnim.key == 'standshoot' || this.player.anims.currentAnim.key == 'crouchshoot') {
+            this.shooting=false;
+            if(this.player.facingRight) {
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                var rightbullet = this.playerbullet.create(this.player.x+32, this.player.y-14, 'playerbullet');
+              } else {
+                var rightbullet = this.playerbullet.create(this.player.x+32, this.player.y+20, 'playerbullet');
+              }
+              rightbullet.body.setAllowGravity(false);
+              var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
+                  speed: 80
+              });
+              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); console.log(gameObject) });
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                moveTo.moveTo(this.map.widthInPixels,this.player.y-14)
+              } else {
+                moveTo.moveTo(this.map.widthInPixels,this.player.y+20);
+              }
+            } else {
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                var leftbullet = this.playerbullet.create(this.player.x-32, this.player.y-14, 'playerbullet');
+              } else {
+                var leftbullet = this.playerbullet.create(this.player.x-32, this.player.y+20, 'playerbullet');
+              }
+              leftbullet.body.setAllowGravity(false);
+              var moveTo = this.plugins.get('rexMoveTo').add(leftbullet, {
+                  speed: 80
+              });
+              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
+              if (this.player.anims.currentAnim.key == 'standshoot'){
+                moveTo.moveTo(0,this.player.y-14);
+              } else {
+                moveTo.moveTo(0,this.player.y+20);
+              }
+            }
+          }
+      }, this );
+    },
+
    create: function() {
      //Control variables
      this.playerIsDead = false;
@@ -78,21 +252,7 @@ export default new Phaser.Class({
       // create the player sprite
       console.log(this.map.heightInPixels);
       //Default
-      this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
-      //Near tailbomb
-      //this.player = this.physics.add.sprite(325,5796, 'player');
-      //Near cauliflower
-      //this.player = this.physics.add.sprite(173,7172, 'player');
 
-      //this.player = this.physics.add.sprite(449,1998, 'player')
-      //Near tuplips
-      //this.player = this.physics.add.sprite(275,2084, 'player');
-      //Near Mouse
-      //this.player = this.physics.add.sprite(190,836, 'player');
-      this.player.facingRight = true;
-      this.player.setBounce(0.2); // our player will bounce from items
-      this.player.setCollideWorldBounds(true); // don't go out of the map
-      this.player.lives = 1;
 
       //var thewormtest = this.physics.add.sprite(450,this.map.heightInPixels-300, 'worm')
       //thewormtest.body.setSize(200,200);
@@ -254,8 +414,6 @@ export default new Phaser.Class({
       });
       this.tulipgroup.setVelocityX(0);
 
-
-
       // tulip movement
       this.anims.create({
           key: 'tulipmove',
@@ -340,186 +498,10 @@ export default new Phaser.Class({
         callbackScope: this,
         loop: true
       });
-      //this.anims.play('spiderr');
 
-      /*
-      // snake animation
-      this.anims.create({
-          key: 'snake',
-          frames: this.anims.generateFrameNames('snake', {prefix: 'sprite_', start: 0, end: 20}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.snakegroup.playAnimation('snake');
-      //this.anims.play('snake');
-      */
-      // small fix to our player images, we resize the physics body object slightly
-      this.player.body.setSize(this.player.width, this.player.height-8);
-
-      // player will collide with the level tiles
-      this.playerColliders = [];
-
-      this.physics.add.collider(this.platformLayer, this.wormgroup);
-      this.physics.add.collider(this.platformLayer, this.cauligroup);
-      this.physics.add.collider(this.platformLayer, this.tulipgroup);
-      this.physics.add.collider(this.platformLayer, this.mousegroup);
-      this.physics.add.collider(this.platformLayer, this.tailbombicongroup);
-      this.physics.add.collider(this.platformLayer, this.lifeicongroup);
-      this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
-      this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
-      this.physics.add.collider(this.platformLayer, this.player);
-      //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
-      this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
-      this.physics.add.collider(this.platformBoundaries, this.cauligroup,this.reverseSprite,null,this);
-      this.physics.add.collider(this.platformBoundaries, this.mousegroup,this.reverseSprite,null,this);
-      //Enemy collisions
-      this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
-      this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
-      //Player bullets colliders
-      this.physics.add.collider(this.playerbullet, this.wormgroup,this.enemyShot,null,this);
-      this.physics.add.collider(this.playerbullet, this.cauligroup,this.enemyShot,null,this);
-      this.physics.add.collider(this.playerbullet, this.tulipgroup,this.enemyShot,null,this);
-      this.physics.add.collider(this.playerbullet, this.mousegroup,this.enemyShot,null,this);
-      //Player on over icon
-
-      // when the player overlaps with a tile with index 17, collectCoin
-      // will be called
-      this.physics.add.overlap(this.player, this.tailbombicongroup,function(player,sprite) {
-        sprite.destroy();
-        this.canShoot = true;
-      },null,this);
-      this.physics.add.overlap(this.player, this.lifeicongroup,function(player,sprite) {
-        sprite.destroy();
-        this.player.lives++;
-      },null,this);
-      this.physics.add.overlap(this.player, this.diamondgroup,function(player,sprite) {
-        sprite.destroy();
-        this.score+=10;
-      },null,this);
-
-
-      // player walk animation
-      this.anims.create({
-          key: 'walk',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 0, end: 16}),
-          frameRate: 10,
-          repeat: -1
-      });
-      //Stop crouching when the key changes
-      this.player.on('animationcomplete',function () {
-          if(this.player.anims.currentAnim.key == 'walk') {
-            this.crouching=false;
-          }
-      }, this );
-      // player walk animation
-      this.anims.create({
-          key: 'idle',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 16, end: 16}),
-          frameRate: 10,
-          repeat: 0
-      });
-      // player walk animation
-      this.anims.create({
-          key: 'jump',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 19, end: 19}),
-          frameRate: 10,
-          repeat: 0
-      });
-      // player walk animation
-      this.anims.create({
-          key: 'tailwhip',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 20, end: 27}),
-          frameRate: 10,
-          repeat: -1
-      });
-      // player death animation
-      this.anims.create({
-          key: 'death',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 28, end: 33}),
-          frameRate: 10,
-          repeat: 0
-      });
-      // player crouch animation
-      this.anims.create({
-          key: 'crouchdown',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 46, end: 52}),
-          frameRate: 10,
-          repeat: 0
-      });
-      this.anims.create({
-          key: 'crouchup',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 63, end: 69}),
-          frameRate: 10,
-          repeat: 0
-      });
-      //Stop crouching when the key changes
-      this.player.on('animationcomplete',function () {
-          if(this.player.anims.currentAnim.key == 'crouchup') {
-            this.crouching=false;
-          }
-      }, this );
-      this.anims.create({
-          key: 'standshoot',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 34, end: 45}),
-          frameRate: 10,
-          repeat: 0
-      });
-      this.anims.create({
-          key: 'crouchshoot',
-          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 53, end: 62}),
-          frameRate: 10,
-          repeat: 0
-      });
-      console.log('player');
-      console.log(this.player);
-      this.player.on('animationcomplete',function () {
-          if(this.player.anims.currentAnim.key == 'standshoot' || this.player.anims.currentAnim.key == 'crouchshoot') {
-            this.shooting=false;
-            if(this.player.facingRight) {
-              if (this.player.anims.currentAnim.key == 'standshoot'){
-                var rightbullet = this.playerbullet.create(this.player.x+32, this.player.y-14, 'playerbullet');
-              } else {
-                var rightbullet = this.playerbullet.create(this.player.x+32, this.player.y+20, 'playerbullet');
-              }
-              rightbullet.body.setAllowGravity(false);
-              var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
-                  speed: 80
-              });
-              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); console.log(gameObject) });
-              if (this.player.anims.currentAnim.key == 'standshoot'){
-                moveTo.moveTo(this.map.widthInPixels,this.player.y-14)
-              } else {
-                moveTo.moveTo(this.map.widthInPixels,this.player.y+20);
-              }
-            } else {
-              if (this.player.anims.currentAnim.key == 'standshoot'){
-                var leftbullet = this.playerbullet.create(this.player.x-32, this.player.y-14, 'playerbullet');
-              } else {
-                var leftbullet = this.playerbullet.create(this.player.x-32, this.player.y+20, 'playerbullet');
-              }
-              leftbullet.body.setAllowGravity(false);
-              var moveTo = this.plugins.get('rexMoveTo').add(leftbullet, {
-                  speed: 80
-              });
-              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
-              if (this.player.anims.currentAnim.key == 'standshoot'){
-                moveTo.moveTo(0,this.player.y-14);
-              } else {
-                moveTo.moveTo(0,this.player.y+20);
-              }
-            }
-          }
-      }, this );
-
-
-
-
+      createPlayer();
+      setColliders();
+      setPlayerAnims();
 
       this.cursors = this.input.keyboard.createCursorKeys();
       //this.dkey = this.input.keyboard.addKeys(Phaser.Input.Keyboard.KeyCodes.W);
@@ -699,23 +681,23 @@ export default new Phaser.Class({
         }*/
       } else {
         if(this.playDeathText) {
+          if(this.deathtextcounter==0) {
+            //this.playerColliders.forEach(collider => collider.active = true);
+            //this.player.checkCollision.none = false;
+          }
+
           if(this.deathtextcounter < 190) {
             this.deathtextcounter += 5;
             this.lvltxt.setPosition(200,this.deathtextcounter);
           }
           if(this.cursors.space.isDown) {
-            if(this.player.lives <=0) {
-              this.scene.start('PlayerDied');
-            }
-            this.deadplayer.destroy();
-            this.playerIsDead = false;
-            this.player.setVelocityY(0);
-            //this.playerColliders.forEach(collider =>
-              //collider.active = true
-            //);
+            this.playerColliders.forEach(collider =>
+              collider.active = true
+            );
 
             //reset text
             console.log(this.player);
+            this.player.body.setAllowGravity(false);
             this.invulnerable = true;
             this.invulnerableTimer = this.time.addEvent({
               delay: 2000,
@@ -727,12 +709,11 @@ export default new Phaser.Class({
             this.playDeathText = false;
             this.lvltxt.setPosition(200,-100);
             this.player.anims.play('idle',true);
-            this.playerColliders.forEach(collider => collider.active = true);
+            //this.playerColliders.forEach(collider => collider.active = true);
             //respawn the player - recreate the colliders
-
             /*
             this.playerColliders = [];
-            //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
+            this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
             this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
             this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
             this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
@@ -742,12 +723,10 @@ export default new Phaser.Class({
             this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
             this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
             */
-
             //this.player.setPosition(this.playerRespawnX,this.playerRespawnY);
-            this.player.x = this.playerRespawnX;
-            this.player.y = this.playerRespawnY-34;
-            this.player.setVisible(true);
-            //this.playerColliders.forEach(collider => collider.active = true);
+            this.player.body.x = this.playerRespawnX;
+            this.player.body.y = this.playerRespawnY-42;
+            this.playerIsDead = false;
           }
         }
         console.log(this.playerRespawnY);
@@ -800,13 +779,8 @@ export default new Phaser.Class({
       var playerDeathY = player.y;
       this.playerRespawnX = player.x;
       this.playerRespawnY = player.y;
-      this.player.setVisible(false);
-      this.player.lives -= 1;
-      this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
-      this.deadplayer.setVelocityY(-400)
-      this.deadplayer.setVelocityX(0)
-      this.deadplayer.anims.play('death',true);
       this.playerIsDead = true;
+      this.player.anims.play('death',true);
       this.timer = this.time.addEvent({
         delay: 2000,
         callback: function() { this.playDeathText=true; },
@@ -858,12 +832,7 @@ export default new Phaser.Class({
           this.playerIsDead = true;
           this.playerRespawnX = player.x;
           this.playerRespawnY = player.y;
-          this.player.setVisible(false);
-          this.player.lives -= 1;
-          this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
-          this.deadplayer.setVelocityY(-400)
-          this.deadplayer.setVelocityX(0)
-          this.deadplayer.anims.play('death',true);
+          this.player.anims.play('death',true);
           this.timer = this.time.addEvent({
             delay: 2000,
             callback: function() { this.playDeathText = true; },

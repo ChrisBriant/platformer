@@ -25,7 +25,7 @@ export default new Phaser.Class({
           },
           active: function () {
             thisscene.fontactive = true;
-            thisscene.lvltxt = thisscene.add.text(360, 0, 'You Died', { fontFamily: 'Fontdiner Swanky', fontSize: 60, color: '#7b4585' });
+            thisscene.lvltxt = thisscene.add.text(200, 0, 'Game Over', { fontFamily: 'Fontdiner Swanky', fontSize: 60, color: '#7b4585' });
             thisscene.lvltxt.setStroke('#bbbe4b',8);
             thisscene.lvltxt.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
           }
@@ -42,17 +42,14 @@ export default new Phaser.Class({
       if(this.fontactive) {
         if(this.counter < 190) {
           this.counter += 5;
-          this.lvltxt.setPosition(360,this.counter);
+          this.lvltxt.setPosition(200,this.counter);
         }
       }
 
       if (this.cursors.space.isDown) {
+        alert("space");
         this.scene.start('Level1');
       }
     },
-
-    nextScene: function() {
-      this.scene.start('MainGame');
-    }
 
 });
