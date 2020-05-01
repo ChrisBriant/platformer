@@ -61,7 +61,7 @@ export default new Phaser.Class({
       // tiles for the ground layer
       this.tiles = this.map.addTilesetImage('level1-2TileSet')
 
-      this.platformLayer = this.map.createDynamicLayer('BG', this.tiles, 0, 0);
+      //this.platformLayer = this.map.createDynamicLayer('BG', this.tiles, 0, 0);
       // create the platforms layer
       this.platformLayer = this.map.createDynamicLayer('platformLayer', this.tiles, 0, 0);
       // the player will collide with this layer
@@ -69,7 +69,6 @@ export default new Phaser.Class({
 
       this.ladders = this.map.createDynamicLayer('ladders', this.tiles, 0, 0);
       // the player will collide with this layer
-      this.ladders.setCollisionByExclusion([-1]);
 
 
       this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', this.tiles, 0, 0);
@@ -97,6 +96,8 @@ export default new Phaser.Class({
       this.player.setBounce(0.2); // our player will bounce from items
       this.player.setCollideWorldBounds(true); // don't go out of the map
       this.player.lives = 1;
+      this.player.onLadder = false;
+      this.player.turned = false;
 
       //var thewormtest = this.physics.add.sprite(450,this.map.heightInPixels-300, 'worm')
       //thewormtest.body.setSize(200,200);
@@ -365,8 +366,8 @@ export default new Phaser.Class({
       this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
       this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
       */
-      this.physics.add.collider(this.platformLayer, this.player);
-      this.physics.add.collider(this.player,this.ladders,this.climb,null,this);
+      this.physics.add.collider(this.platformLayer,this.player,this.handlePlatformCollision,null,this);
+      //this.physics.add.collider(this.player,this.ladders,this.climb,null,this);
       //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
       this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
       this.physics.add.collider(this.platformBoundaries, this.cauligroup,this.reverseSprite,null,this);
@@ -475,6 +476,18 @@ export default new Phaser.Class({
       this.anims.create({
           key: 'crouchshoot',
           frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 53, end: 62}),
+          frameRate: 10,
+          repeat: 0
+      });
+      this.anims.create({
+          key: 'turning',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 70, end: 72}),
+          frameRate: 10,
+          repeat: 0
+      });
+      this.anims.create({
+          key: 'climb',
+          frames: this.anims.generateFrameNames('player', {prefix: 'bof ', suffix: '.aseprite', start: 72, end: 79}),
           frameRate: 10,
           repeat: 0
       });
@@ -596,6 +609,17 @@ export default new Phaser.Class({
       this.lifetext.setText("Lives " + this.player.lives);
       this.scoretext.setText("Score " + this.score);
 
+      //Detect ladder
+      var tile = this.ladders.getTileAtWorldXY(this.player.x, this.player.y, true);
+      if(tile.index != -1) {
+        this.player.onLadder = true;
+        this.player.body.setAllowGravity(false);
+      } else {
+        this.player.turned = false;
+        this.player.onLadder = false;
+        this.player.body.setAllowGravity(true);
+      }
+
       if(!this.playerIsDead) {
         //For shooting
         if(this.cursors.shift.isDown && !this.crouching && this.canShoot) {
@@ -605,12 +629,12 @@ export default new Phaser.Class({
           this.player.anims.play('crouchshoot', true);
         } else {
 
-          if(this.cursors.down.isDown && !this.crouching) {
+          if(this.cursors.down.isDown && !this.crouching && !this.player.onLadder) {
             //Crouching
             this.player.body.setVelocityX(0);
             this.player.anims.play('crouchdown', true);
             this.crouching = true;
-          } else if (this.cursors.down.isUp && this.crouching) {
+          } else if (this.cursors.down.isUp && this.crouching && !this.player.onLadder) {
             this.player.body.setVelocityX(0);
             this.player.anims.play('crouchup', true);
           } else {
@@ -634,17 +658,36 @@ export default new Phaser.Class({
                 this.player.facingRight = true;
             } else {
                 this.player.body.setVelocityX(0);
-                if(!this.playerAttack && !this.crouching && !this.shooting) {
+                if(!this.playerAttack && !this.crouching && !this.shooting && !this.player.onLadder) {
                   this.player.anims.play('idle', true);
+                }
+                if(this.player.onLadder && !this.player.turned) {
+                  this.player.turned =true;
+                  this.player.anims.play('turning',true);
                 }
             }
           }
         }
         // jump
-        if (this.cursors.up.isDown && this.player.body.onFloor())
+        if (this.cursors.up.isDown && this.player.body.onFloor() && !this.player.onLadder)
         {
             this.player.body.setVelocityY(-400);
         }
+
+        var up = this.cursors.up;
+        var down = this.cursors.down;
+
+        if (up.isDown && down.isUp && this.player.onLadder) {
+            this.player.anims.play('climb',true);
+            this.player.body.setVelocityY(-60);
+        } else if (down.isDown && up.isUp  && this.player.onLadder) {
+            this.player.anims.play('climb',true);
+            this.player.body.setVelocityY(+60);
+        } else if (down.isUp && up.isUp && this.player.onLadder) {
+            this.player.body.setVelocityY(0);
+        }
+
+
         //Attack
         if (this.cursors.space.isDown) {
           if(!this.playerAttack) {
@@ -911,8 +954,27 @@ export default new Phaser.Class({
     }
   },
 
-  climb: function(ladder,player) {
-    console.log("climb");
+  handlePlatformCollision: function(player,platform) {
+    //Transition player from ladder to platform and vice versa
+
+    if(player.body.blocked.up && player.onLadder) {
+      player.body.y = player.body.y - platform.height - player.height;
+    }
+
+    var playerRelBottomGameArea = this.map.heightInPixels - this.player.y;
+
+    if(player.body.blocked.down && !player.onLadder && playerRelBottomGameArea > 96) {
+      var ladderLocation = this.player.y + platform.height + (this.player.height / 2);
+      //var tile = this.ladders.getTileAtWorldXY(this.player.x,this.player.y + platform.height + (this.player.height / 2),true)
+      var tile = this.ladders.getTileAtWorldXY(this.player.x,ladderLocation,true);
+      if(tile.index != -1) {
+        console.log("Ladder Underneath");
+        if(this.cursors.down.isDown) {
+          player.body.y = player.body.y + platform.height + player.height;
+        }
+      }
+    }
+
   }
 
 });
