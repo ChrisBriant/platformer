@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import Level1 from "./level1.js"
+import Level1_2 from "./level1-2.js"
 import PlayerDied from "./playerdied.js"
 import MoveToPlugin from 'phaser3-rex-plugins/plugins/moveto-plugin.js';
 import WebfontLoaderPlugin from 'phaser3-rex-plugins/plugins/webfontloader-plugin.js';
@@ -28,7 +29,7 @@ var config = {
         }
         ]
     },
-    scene: [Level1,PlayerDied]
+    scene: [Level1_2,PlayerDied]
 }
 
 var game = new Phaser.Game(config);

@@ -558,6 +558,86 @@
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
     "sourceSize": { "w": 64, "h": 64 },
     "duration": 100
+   },
+   "bof 70.aseprite": {
+    "frame": { "x": 4480, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 71.aseprite": {
+    "frame": { "x": 4544, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 72.aseprite": {
+    "frame": { "x": 4608, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 73.aseprite": {
+    "frame": { "x": 4672, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 74.aseprite": {
+    "frame": { "x": 4736, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 75.aseprite": {
+    "frame": { "x": 4800, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 76.aseprite": {
+    "frame": { "x": 4864, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 77.aseprite": {
+    "frame": { "x": 4928, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 78.aseprite": {
+    "frame": { "x": 4992, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
+   },
+   "bof 79.aseprite": {
+    "frame": { "x": 5056, "y": 0, "w": 64, "h": 64 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 64 },
+    "sourceSize": { "w": 64, "h": 64 },
+    "duration": 100
    }
  },
  "meta": {
@@ -565,7 +645,7 @@
   "version": "1.2.17-x64",
   "image": "bof.png",
   "format": "I8",
-  "size": { "w": 4480, "h": 64 },
+  "size": { "w": 5120, "h": 64 },
   "scale": "1",
   "frameTags": [
    { "name": "walk", "from": 0, "to": 16, "direction": "forward" },
@@ -575,7 +655,9 @@
    { "name": "shoot", "from": 34, "to": 45, "direction": "forward" },
    { "name": "crouchdown", "from": 46, "to": 52, "direction": "forward" },
    { "name": "crouchshoot", "from": 53, "to": 62, "direction": "forward" },
-   { "name": "crouchup", "from": 63, "to": 69, "direction": "forward" }
+   { "name": "crouchup", "from": 63, "to": 69, "direction": "forward" },
+   { "name": "turn", "from": 70, "to": 71, "direction": "forward" },
+   { "name": "climb", "from": 72, "to": 79, "direction": "forward" }
   ],
   "layers": [
    { "name": "back arm", "opacity": 255, "blendMode": "normal" },
@@ -586,7 +668,9 @@
    { "name": "frontleg", "opacity": 255, "blendMode": "normal" },
    { "name": "tail", "opacity": 255, "blendMode": "normal" },
    { "name": "bomb", "opacity": 255, "blendMode": "normal" },
-   { "name": "front arm", "opacity": 255, "blendMode": "normal" }
+   { "name": "front arm", "opacity": 255, "blendMode": "normal" },
+   { "name": "arm3", "opacity": 255, "blendMode": "normal" },
+   { "name": "tail2", "opacity": 255, "blendMode": "normal" }
   ],
   "slices": [
   ]
