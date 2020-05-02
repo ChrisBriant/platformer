@@ -50,7 +50,7 @@ export default new Phaser.Class({
      this.playDeathText = false;
      this.playerRespawnX = 0;
      this.playerRespawnY = 0;
-     this.invulnerable = false;
+     this.invulnerable = true;
 
      //Sprite groups for enemy deaths
      this.deadworms = this.physics.add.group();
@@ -68,8 +68,9 @@ export default new Phaser.Class({
       this.platformLayer.setCollisionByExclusion([-1]);
 
       this.ladders = this.map.createDynamicLayer('ladders', this.tiles, 0, 0);
-      // the player will collide with this layer
 
+      this.spikes = this.map.createDynamicLayer('spikes', this.tiles, 0, 0);
+      this.spikes.setCollisionByExclusion([-1]);
 
       this.platformBoundaries = this.map.createDynamicLayer('invisiblewalls', this.tiles, 0, 0);
       this.platformBoundaries.setCollisionByExclusion([-1])
@@ -82,8 +83,11 @@ export default new Phaser.Class({
       console.log(this.map.heightInPixels);
       //Default
       this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
-      //Near tailbomb
-      //this.player = this.physics.add.sprite(325,5796, 'player');
+      //Near spikes
+      //this.player = this.physics.add.sprite(439,16928, 'player');
+
+      //Level
+      this.player = this.physics.add.sprite(380,4768, 'player');
       //Near cauliflower
       //this.player = this.physics.add.sprite(173,7172, 'player');
 
@@ -367,8 +371,9 @@ export default new Phaser.Class({
       this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
       */
       this.physics.add.collider(this.platformLayer,this.player,this.handlePlatformCollision,null,this);
-      //this.physics.add.collider(this.player,this.ladders,this.climb,null,this);
-      //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
+      this.playerColliders.push(this.physics.add.collider(this.spikes, this.player,this.killPlayer,null,this));
+
+      //this.physics.add.collider(this.spikes, this.player,function() {alert("Here")},null,this);
       this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
       this.physics.add.collider(this.platformBoundaries, this.cauligroup,this.reverseSprite,null,this);
       this.physics.add.collider(this.platformBoundaries, this.mousegroup,this.reverseSprite,null,this);
@@ -975,6 +980,31 @@ export default new Phaser.Class({
       }
     }
 
+  },
+
+  killPlayer: function(player,spike) {
+    if(!this.invulnerable) {
+      this.playerRespawnX = player.x;
+      this.playerRespawnY = player.y;
+      this.player.setVisible(false);
+      this.player.lives -= 1;
+      this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
+      this.deadplayer.setVelocityY(-400)
+      this.deadplayer.setVelocityX(0)
+      this.deadplayer.anims.play('death',true);
+      this.playerIsDead = true;
+      this.timer = this.time.addEvent({
+        delay: 2000,
+        callback: function() { this.playDeathText=true; },
+        callbackScope: this,
+        loop: true
+      });
+      //this.input.keyboard.removeCapture(37,38,39,40);
+      this.playerColliders.forEach(collider => collider.active = false);
+      //this.player.checkCollision.none = true;
+      this.player.setVelocityX(0);
+      this.player.setVelocityY(-400);
+    }
   }
 
 });
