@@ -29,6 +29,7 @@ export default new Phaser.Class({
         this.load.atlas('seed', 'assets/seed.png', 'assets/seed.json');
         this.load.atlas('diamond', 'assets/diamond.png', 'assets/diamond.json');
         this.load.atlas('bullet', 'assets/bullet.png', 'assets/bullet.json');
+        this.load.atlas('flag', 'assets/World1/flag.png', 'assets/World1/flag.json');
         this.load.image('tailbombicon', 'assets/tailbombtile.png');
         this.load.image('lifeicon', 'assets/life.png');
         this.load.image('playerbullet', 'assets/tailbomb.png');
@@ -50,7 +51,10 @@ export default new Phaser.Class({
      this.playDeathText = false;
      this.playerRespawnX = 0;
      this.playerRespawnY = 0;
-     this.invulnerable = false;
+     this.invulnerable = true;
+     this.levelfinished = false;
+     this.levelendtext = "Level 1-1 Complete";
+     this.levelendcounter = 0;
 
      //Sprite groups for enemy deaths
      this.deadworms = this.physics.add.group();
@@ -72,8 +76,8 @@ export default new Phaser.Class({
       this.platformBoundaries.setCollisionByExclusion([-1])
 
       // set the boundaries of our game world
-      this.physics.world.bounds.width = this.tiles.widthInPixels;
-      this.physics.world.bounds.height = this.tiles.heightInPixels;
+      this.physics.world.bounds.width = this.map.widthInPixels;
+      this.physics.world.bounds.height = this.map.heightInPixels;
 
       // create the player sprite
       console.log(this.map.heightInPixels);
@@ -89,15 +93,28 @@ export default new Phaser.Class({
       //this.player = this.physics.add.sprite(275,2084, 'player');
       //Near Mouse
       //this.player = this.physics.add.sprite(190,836, 'player');
+      //Near flag
+      this.player = this.physics.add.sprite(508,132, 'player');
       this.player.facingRight = true;
       this.player.setBounce(0.2); // our player will bounce from items
       this.player.setCollideWorldBounds(true); // don't go out of the map
       this.player.lives = 1;
 
-      //var thewormtest = this.physics.add.sprite(450,this.map.heightInPixels-300, 'worm')
-      //thewormtest.body.setSize(200,200);
-      //this.physics.add.collider(thewormtest,this.platformLayer);
-
+      //End goal
+      var flags = this.map.getObjectLayer('flag')['objects'];
+      this.flaggroup = this.physics.add.group();
+      flags.forEach(flag => {
+        this.flaggroup.create(flag.x, flag.y-66, 'flag');
+      });
+      this.LevelEndTimer = this.time.addEvent({
+        delay: 500,
+        callback: function() {
+          if(this.levelendcounter <  this.levelendtext.length)
+          this.levelendcounter++;
+        },
+        callbackScope: this,
+        loop: true
+      });
       //Projectiles
       this.seedgroupright = this.physics.add.group();
       this.anims.create({
@@ -363,6 +380,7 @@ export default new Phaser.Class({
       this.physics.add.collider(this.platformLayer, this.cauligroup);
       this.physics.add.collider(this.platformLayer, this.tulipgroup);
       this.physics.add.collider(this.platformLayer, this.mousegroup);
+      this.physics.add.collider(this.platformLayer, this.flaggroup);
       this.physics.add.collider(this.platformLayer, this.tailbombicongroup);
       this.physics.add.collider(this.platformLayer, this.lifeicongroup);
       this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
@@ -377,6 +395,7 @@ export default new Phaser.Class({
       this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.overlap(this.flaggroup, this.player, this.levelEnd,null,this));
       this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
@@ -554,33 +573,14 @@ export default new Phaser.Class({
       });
       this.lifetext.setScrollFactor(0);
 
-      //Death text
-      this.deathtextcounter = 0;
-      //this.lvltxt;
-      //var thisscene = this;
-      /*
-      this.lvltext = this.add.text(100, 100, 'LEVEL TEXT ', {
+      this.levelenddisplay = this.add.text(300, 400, '', {
           fontSize: '20px',
           fill: '#ffffff'
       });
 
-      */
-      //var lvltxt = this.lvltxt;
 
-      /*
-      WebFont.load({
-          google: {
-              families: [ 'Faster One', 'Finger Paint', 'Nosifer','Fontdiner Swanky' ]
-          },
-          active: function () {
-            console.log("ACTIVE");
-            console.log(thisscene.lvltxt);
-            /*
-
-
-          }
-      });
-      */
+      //Death text
+      this.deathtextcounter = 0;
       this.lvltxt = this.add.text(200, -100, 'You Died', { fontFamily: 'Fontdiner Swanky', fontSize: 60, color: '#7b4585' });
       this.lvltxt.setStroke('#bbbe4b',8);
       this.lvltxt.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
@@ -597,162 +597,171 @@ export default new Phaser.Class({
       //Update on screen text
       this.lifetext.setText("Lives " + this.player.lives);
       this.scoretext.setText("Score " + this.score);
-
-      if(!this.playerIsDead) {
-        //For shooting
-        if(this.cursors.shift.isDown && !this.crouching && this.canShoot) {
-          this.player.anims.play('standshoot', true);
-          this.shooting = true;
-        } else if (this.cursors.shift.isDown && this.crouching && this.canShoot) {
-          this.player.anims.play('crouchshoot', true);
-        } else {
-
-          if(this.cursors.down.isDown && !this.crouching) {
-            //Crouching
-            this.player.body.setVelocityX(0);
-            this.player.anims.play('crouchdown', true);
-            this.crouching = true;
-          } else if (this.cursors.down.isUp && this.crouching) {
-            this.player.body.setVelocityX(0);
-            this.player.anims.play('crouchup', true);
-          } else {
-            //Normal Movement
-            if (this.cursors.left.isDown)
-            {
-                this.player.body.setVelocityX(-200);
-                if(!this.playerAttack) {
-                  this.player.anims.play('walk', true); // walk left
-                }
-                this.player.flipX = true; // flip the sprite to the left
-                this.player.facingRight = false;
-            }
-            else if (this.cursors.right.isDown)
-            {
-                this.player.body.setVelocityX(200);
-                if(!this.playerAttack) {
-                  this.player.anims.play('walk', true);
-                }
-                this.player.flipX = false; // use the original sprite looking to the right
-                this.player.facingRight = true;
-            } else {
-                this.player.body.setVelocityX(0);
-                if(!this.playerAttack && !this.crouching && !this.shooting) {
-                  this.player.anims.play('idle', true);
-                }
-            }
-          }
+      if(this.levelfinished) {
+        this.levelenddisplay.setText(this.levelendtext.substr(0,this.levelendcounter));
+        this.player.anims.play('idle');
+        this.player.setVelocity(0,0);
+        if(this.cursors.space.isDown) {
+          this.scene.start('Level1_2');
         }
-        // jump
-        if (this.cursors.up.isDown && this.player.body.onFloor())
-        {
-            this.player.body.setVelocityY(-400);
-        }
-        //Attack
-        if (this.cursors.space.isDown) {
-          if(!this.playerAttack) {
-            this.player.anims.play('tailwhip',true);
-            this.attackTimer = this.time.addEvent({
-              delay: 1000,
-              callback: function() { this.playerAttack = false; console.log("finishedattack") },
-              callbackScope: this,
-              loop: false
-            });
-          }
-          this.playerAttack = true;
-          //Stop the attack from running
-          console.log(this.attackTimer);
-        }
-
-        //Destroy any sprites falling off the screen
-        var destroyWorms = this.deadworms.children.entries.filter(child => child.y > this.map.heightInPixels);
-        if(destroyWorms.length > 0) {
-          destroyWorms.forEach(worm => worm.destroy());
-        }
-
-        /*
-        var spritesWithIncorrectVelocity = this.cauligroup.children.entries.filter(child => child.body.velocity.x != this.enemyVelocityX || child.body.velocity.x != (this.enemyVelocityX * -1));
-        for(var i=0;i<spritesWithIncorrectVelocity .length;i++) {
-          if(spritesWithIncorrectVelocity.length > 0) {
-            console.log("Sprites Exist")
-          }
-          if (spritesWithIncorrectVelocity[i].body.velocity.x < this.enemyVelocityX) {
-            spritesWithIncorrectVelocity[i].setAccelerationX(20);
-          } else if (spritesWithIncorrectVelocity[i].body.velocity.x > this.enemyVelocityX) {
-            spritesWithIncorrectVelocity[i].setAccelerationX(-20);
-          } else {
-            spritesWithIncorrectVelocity[i].setAccelerationX(0);
-          }
-        }*/
-
-        //Bounce back sprites
-        /*
-        if(this.bouncing.length > 0) {
-          for(var i=0;i<this.bouncing.length;i++) {
-            if(this.bouncing[i].bounceTimer == 0) {
-              var vel = this.bouncing[i].body.velocity.x;
-              this.bouncing[i].setVelocityX(vel*-1);
-              this.bouncing.pop(this.bouncing[i])
-            } else {
-              this.bouncing[i].bounceTimer--;
-            }
-          }
-        }*/
       } else {
-        if(this.playDeathText) {
-          if(this.deathtextcounter < 190) {
-            this.deathtextcounter += 5;
-            this.lvltxt.setPosition(200,this.deathtextcounter);
-          }
-          if(this.cursors.space.isDown) {
-            if(this.player.lives <=0) {
-              this.scene.start('PlayerDied');
+        if(!this.playerIsDead) {
+          //For shooting
+          if(this.cursors.shift.isDown && !this.crouching && this.canShoot) {
+            this.player.anims.play('standshoot', true);
+            this.shooting = true;
+          } else if (this.cursors.shift.isDown && this.crouching && this.canShoot) {
+            this.player.anims.play('crouchshoot', true);
+          } else {
+
+            if(this.cursors.down.isDown && !this.crouching) {
+              //Crouching
+              this.player.body.setVelocityX(0);
+              this.player.anims.play('crouchdown', true);
+              this.crouching = true;
+            } else if (this.cursors.down.isUp && this.crouching) {
+              this.player.body.setVelocityX(0);
+              this.player.anims.play('crouchup', true);
+            } else {
+              //Normal Movement
+              if (this.cursors.left.isDown)
+              {
+                  this.player.body.setVelocityX(-200);
+                  if(!this.playerAttack) {
+                    this.player.anims.play('walk', true); // walk left
+                  }
+                  this.player.flipX = true; // flip the sprite to the left
+                  this.player.facingRight = false;
+              }
+              else if (this.cursors.right.isDown)
+              {
+                  this.player.body.setVelocityX(200);
+                  if(!this.playerAttack) {
+                    this.player.anims.play('walk', true);
+                  }
+                  this.player.flipX = false; // use the original sprite looking to the right
+                  this.player.facingRight = true;
+              } else {
+                  this.player.body.setVelocityX(0);
+                  if(!this.playerAttack && !this.crouching && !this.shooting) {
+                    this.player.anims.play('idle', true);
+                  }
+              }
             }
-            this.deadplayer.destroy();
-            this.playerIsDead = false;
-            this.player.setVelocityY(0);
-            //this.playerColliders.forEach(collider =>
-              //collider.active = true
-            //);
-
-            //reset text
-            console.log(this.player);
-            this.invulnerable = true;
-            this.invulnerableTimer = this.time.addEvent({
-              delay: 2000,
-              callback: function() { this.invulnerable = false; },
-              callbackScope: this,
-              loop: false
-            });
-            this.deathtextcounter = 0;
-            this.playDeathText = false;
-            this.lvltxt.setPosition(200,-100);
-            this.player.anims.play('idle',true);
-            this.playerColliders.forEach(collider => collider.active = true);
-            //respawn the player - recreate the colliders
-
-            /*
-            this.playerColliders = [];
-            //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
-            this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
-            */
-
-            //this.player.setPosition(this.playerRespawnX,this.playerRespawnY);
-            this.player.x = this.playerRespawnX;
-            this.player.y = this.playerRespawnY-34;
-            this.player.setVisible(true);
-            //this.playerColliders.forEach(collider => collider.active = true);
           }
-        }
-        console.log(this.playerRespawnY);
+          // jump
+          if (this.cursors.up.isDown && this.player.body.onFloor())
+          {
+              this.player.body.setVelocityY(-400);
+          }
+          //Attack
+          if (this.cursors.space.isDown) {
+            if(!this.playerAttack) {
+              this.player.anims.play('tailwhip',true);
+              this.attackTimer = this.time.addEvent({
+                delay: 1000,
+                callback: function() { this.playerAttack = false; console.log("finishedattack") },
+                callbackScope: this,
+                loop: false
+              });
+            }
+            this.playerAttack = true;
+            //Stop the attack from running
+            console.log(this.attackTimer);
+          }
 
+          //Destroy any sprites falling off the screen
+          var destroyWorms = this.deadworms.children.entries.filter(child => child.y > this.map.heightInPixels);
+          if(destroyWorms.length > 0) {
+            destroyWorms.forEach(worm => worm.destroy());
+          }
+
+          /*
+          var spritesWithIncorrectVelocity = this.cauligroup.children.entries.filter(child => child.body.velocity.x != this.enemyVelocityX || child.body.velocity.x != (this.enemyVelocityX * -1));
+          for(var i=0;i<spritesWithIncorrectVelocity .length;i++) {
+            if(spritesWithIncorrectVelocity.length > 0) {
+              console.log("Sprites Exist")
+            }
+            if (spritesWithIncorrectVelocity[i].body.velocity.x < this.enemyVelocityX) {
+              spritesWithIncorrectVelocity[i].setAccelerationX(20);
+            } else if (spritesWithIncorrectVelocity[i].body.velocity.x > this.enemyVelocityX) {
+              spritesWithIncorrectVelocity[i].setAccelerationX(-20);
+            } else {
+              spritesWithIncorrectVelocity[i].setAccelerationX(0);
+            }
+          }*/
+
+          //Bounce back sprites
+          /*
+          if(this.bouncing.length > 0) {
+            for(var i=0;i<this.bouncing.length;i++) {
+              if(this.bouncing[i].bounceTimer == 0) {
+                var vel = this.bouncing[i].body.velocity.x;
+                this.bouncing[i].setVelocityX(vel*-1);
+                this.bouncing.pop(this.bouncing[i])
+              } else {
+                this.bouncing[i].bounceTimer--;
+              }
+            }
+          }*/
+        } else {
+          if(this.playDeathText) {
+            if(this.deathtextcounter < 190) {
+              this.deathtextcounter += 5;
+              this.lvltxt.setPosition(200,this.deathtextcounter);
+            }
+            if(this.cursors.space.isDown) {
+              if(this.player.lives <=0) {
+                this.scene.start('PlayerDied');
+              }
+              this.deadplayer.destroy();
+              this.playerIsDead = false;
+              this.player.setVelocityY(0);
+              //this.playerColliders.forEach(collider =>
+                //collider.active = true
+              //);
+
+              //reset text
+              console.log(this.player);
+              this.invulnerable = true;
+              this.invulnerableTimer = this.time.addEvent({
+                delay: 2000,
+                callback: function() { this.invulnerable = false; },
+                callbackScope: this,
+                loop: false
+              });
+              this.deathtextcounter = 0;
+              this.playDeathText = false;
+              this.lvltxt.setPosition(200,-100);
+              this.player.anims.play('idle',true);
+              this.playerColliders.forEach(collider => collider.active = true);
+              //respawn the player - recreate the colliders
+
+              /*
+              this.playerColliders = [];
+              //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
+              this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
+              this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
+              */
+
+              //this.player.setPosition(this.playerRespawnX,this.playerRespawnY);
+              this.player.x = this.playerRespawnX;
+              this.player.y = this.playerRespawnY-34;
+              this.player.setVisible(true);
+              //this.playerColliders.forEach(collider => collider.active = true);
+            }
+          }
+          console.log(this.playerRespawnY);
+
+        }
       }
+
 
   },
 
@@ -798,26 +807,28 @@ export default new Phaser.Class({
       worm.setVisible(false);
       var playerDeathX = player.x;
       var playerDeathY = player.y;
-      this.playerRespawnX = player.x;
-      this.playerRespawnY = player.y;
-      this.player.setVisible(false);
-      this.player.lives -= 1;
-      this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
-      this.deadplayer.setVelocityY(-400)
-      this.deadplayer.setVelocityX(0)
-      this.deadplayer.anims.play('death',true);
-      this.playerIsDead = true;
-      this.timer = this.time.addEvent({
-        delay: 2000,
-        callback: function() { this.playDeathText=true; },
-        callbackScope: this,
-        loop: true
-      });
-      //this.input.keyboard.removeCapture(37,38,39,40);
-      this.playerColliders.forEach(collider => collider.active = false);
-      //this.player.checkCollision.none = true;
-      this.player.setVelocityX(0);
-      this.player.setVelocityY(-400);
+      if(!this.invulnerable) {
+        this.playerRespawnX = player.x;
+        this.playerRespawnY = player.y;
+        this.player.setVisible(false);
+        this.player.lives -= 1;
+        this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
+        this.deadplayer.setVelocityY(-400)
+        this.deadplayer.setVelocityX(0)
+        this.deadplayer.anims.play('death',true);
+        this.playerIsDead = true;
+        this.timer = this.time.addEvent({
+          delay: 2000,
+          callback: function() { this.playDeathText=true; },
+          callbackScope: this,
+          loop: true
+        });
+        //this.input.keyboard.removeCapture(37,38,39,40);
+        this.playerColliders.forEach(collider => collider.active = false);
+        //this.player.checkCollision.none = true;
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(-400);
+      }
     } else {
       if(this.playerAttack) {
         if(worm.hitpoints == 0) {
@@ -911,6 +922,10 @@ export default new Phaser.Class({
     } else {
       sprite.hitpoints--;
     }
+  },
+
+  levelEnd: function(sprite,player) {
+    this.levelfinished = true;
   }
 
 });

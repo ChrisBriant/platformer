@@ -29,7 +29,7 @@ var config = {
         }
         ]
     },
-    scene: [Level1_2,PlayerDied]
+    scene: [Level1,Level1_2,PlayerDied]
 }
 
 var game = new Phaser.Game(config);

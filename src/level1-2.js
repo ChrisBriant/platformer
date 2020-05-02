@@ -5,7 +5,7 @@ export default new Phaser.Class({
     Extends: Phaser.Scene,
     initialize:
     function Level1_2() {
-        Phaser.Scene.call(this, { key: 'Level1_2' , active: true  })
+        Phaser.Scene.call(this, { key: 'Level1_2' , active: false  })
     },
 
     preload: function () {
@@ -17,10 +17,11 @@ export default new Phaser.Class({
           // testInterval: 20,
         });
         // map made with Tiled in JSON format
-        this.load.tilemapTiledJSON('map', 'assets/World1/level1-2.json');
+        this.load.tilemapTiledJSON('map1-2', 'assets/World1/level1-2.json');
         // tiles in spritesheet
         this.load.spritesheet('level1-2TileSet', 'assets/World1/level1-2TileSet.png', {frameWidth: 32, frameHeight: 32});
         // player animations
+        /*
         this.load.atlas('player', 'assets/player.png', 'assets/player.json');
         this.load.atlas('worm', 'assets/worm.png', 'assets/worm.json');
         this.load.atlas('cauli', 'assets/cauliflower.png', 'assets/cauliflower.json');
@@ -32,6 +33,9 @@ export default new Phaser.Class({
         this.load.image('tailbombicon', 'assets/tailbombtile.png');
         this.load.image('lifeicon', 'assets/life.png');
         this.load.image('playerbullet', 'assets/tailbomb.png');
+        */
+        this.load.atlas('gnome', 'assets/World1/gnome.png', 'assets/World1/gnome.json');
+        this.load.image('blanksprite', 'assets/blanksprite.png');
         //For player death
         this.load.script('webfont', 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js');
     },
@@ -51,12 +55,15 @@ export default new Phaser.Class({
      this.playerRespawnX = 0;
      this.playerRespawnY = 0;
      this.invulnerable = true;
+     this.levelfinished = false;
+     this.levelendtext = "Level 1-2 Complete";
+     this.levelendcounter = 0;
 
      //Sprite groups for enemy deaths
      this.deadworms = this.physics.add.group();
 
       // load the map
-      this.map = this.make.tilemap({key: 'map'});
+      this.map = this.make.tilemap({key: 'map1-2'});
 
       // tiles for the ground layer
       this.tiles = this.map.addTilesetImage('level1-2TileSet')
@@ -76,20 +83,23 @@ export default new Phaser.Class({
       this.platformBoundaries.setCollisionByExclusion([-1])
 
       // set the boundaries of our game world
-      this.physics.world.bounds.width = this.tiles.widthInPixels;
-      this.physics.world.bounds.height = this.tiles.heightInPixels;
+      this.physics.world.bounds.width = this.map.widthInPixels;
+      this.physics.world.bounds.height = this.map.heightInPixels;
 
       // create the player sprite
-      console.log(this.map.heightInPixels);
       //Default
-      this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
+      //this.player = this.physics.add.sprite(100,this.map.heightInPixels-64, 'player');
       //Near spikes
       //this.player = this.physics.add.sprite(439,16928, 'player');
 
       //Level
-      this.player = this.physics.add.sprite(380,4768, 'player');
+      //this.player = this.physics.add.sprite(380,4768, 'player');
+      //Near Gnome
+      //this.player = this.physics.add.sprite(658,2948, 'player');
       //Near cauliflower
       //this.player = this.physics.add.sprite(173,7172, 'player');
+      //Near flag
+      this.player = this.physics.add.sprite(508,132, 'player');
 
       //this.player = this.physics.add.sprite(449,1998, 'player')
       //Near tuplips
@@ -103,12 +113,22 @@ export default new Phaser.Class({
       this.player.onLadder = false;
       this.player.turned = false;
 
-      //var thewormtest = this.physics.add.sprite(450,this.map.heightInPixels-300, 'worm')
-      //thewormtest.body.setSize(200,200);
-      //this.physics.add.collider(thewormtest,this.platformLayer);
-
+      //End goal
+      var flags = this.map.getObjectLayer('flag')['objects'];
+      this.flaggroup = this.physics.add.group();
+      flags.forEach(flag => {
+        this.flaggroup.create(flag.x, flag.y-66, 'flag');
+      });
+      this.LevelEndTimer = this.time.addEvent({
+        delay: 500,
+        callback: function() {
+          if(this.levelendcounter <  this.levelendtext.length)
+          this.levelendcounter++;
+        },
+        callbackScope: this,
+        loop: true
+      });
       //Projectiles
-      /*
       this.seedgroupright = this.physics.add.group();
       this.anims.create({
           key: 'seedright',
@@ -243,6 +263,54 @@ export default new Phaser.Class({
       });
       this.cauligroup.playAnimation('caulimove');
 
+      // create the gnome sprite
+      var gnomes = this.map.getObjectLayer('gnomes')['objects'];
+      this.gnomegroup = this.physics.add.group();
+      this.gnomepathdetect = this.physics.add.group();
+
+      var idx = 0;
+
+      gnomes.forEach(gnome => {
+        var gnomesprite = this.gnomegroup.create(gnome.x, gnome.y-18, 'gnome');
+        var gnomepath = this.gnomepathdetect.create(0, gnome.y-48,'blanksprite');
+        gnomepath.body.width = this.map.widthInPixels;
+        gnomepath.body.height = 20;
+        gnomepath.body.setAllowGravity(false);
+        //Index for reference when collision happens
+        gnomepath.gnomeIndex = idx;
+        gnomesprite.gnomeIndex = idx;
+        idx++;
+        gnomesprite.gnomecharge = false;
+        gnomesprite.hitpoints = 2;
+        gnomesprite.scoreval = 40;
+        gnomesprite.invulnerabilityTimer = 0;
+        gnomesprite.flipX = true;
+      });
+      this.gnomegroup.setVelocityX(20);
+
+      //gnome crouch animation
+      this.anims.create({
+          key: 'gnomecrouch',
+          frames: this.anims.generateFrameNames('gnome', {prefix: 'gnome ',suffix: '.aseprite', start: 8, end: 12}),
+          frameRate: 10,
+          repeat: 0
+      });
+      //gnome charge animation
+      this.anims.create({
+          key: 'gnomecharge',
+          frames: this.anims.generateFrameNames('gnome', {prefix: 'gnome ',suffix: '.aseprite', start: 13, end: 20}),
+          frameRate: 10,
+          repeat: -1
+      });
+      // gnome walk animation
+      this.anims.create({
+          key: 'gnomemove',
+          frames: this.anims.generateFrameNames('gnome', {prefix: 'gnome ',suffix: '.aseprite', start: 0, end: 7}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.gnomegroup.playAnimation('gnomemove');
+
 
       // create the tulip sprites
       var tulips = this.map.getObjectLayer('tulips')['objects'];
@@ -356,20 +424,20 @@ export default new Phaser.Class({
       // small fix to our player images, we resize the physics body object slightly
       this.player.body.setSize(this.player.width, this.player.height-8);
 
-      */
       // player will collide with the level tiles
       this.playerColliders = [];
 
-      /*
       this.physics.add.collider(this.platformLayer, this.wormgroup);
       this.physics.add.collider(this.platformLayer, this.cauligroup);
       this.physics.add.collider(this.platformLayer, this.tulipgroup);
       this.physics.add.collider(this.platformLayer, this.mousegroup);
+      this.physics.add.collider(this.platformLayer, this.flaggroup);
+      this.physics.add.collider(this.platformLayer, this.gnomegroup);
       this.physics.add.collider(this.platformLayer, this.tailbombicongroup);
       this.physics.add.collider(this.platformLayer, this.lifeicongroup);
       this.physics.add.collider(this.platformLayer, this.seedgroupright,this.destroySprite,null,this);
       this.physics.add.collider(this.platformLayer, this.seedgroupleft,this.destroySprite,null,this);
-      */
+
       this.physics.add.collider(this.platformLayer,this.player,this.handlePlatformCollision,null,this);
       this.playerColliders.push(this.physics.add.collider(this.spikes, this.player,this.killPlayer,null,this));
 
@@ -377,12 +445,15 @@ export default new Phaser.Class({
       this.physics.add.collider(this.platformBoundaries, this.wormgroup,this.reverseSprite,null,this);
       this.physics.add.collider(this.platformBoundaries, this.cauligroup,this.reverseSprite,null,this);
       this.physics.add.collider(this.platformBoundaries, this.mousegroup,this.reverseSprite,null,this);
+      this.physics.add.collider(this.platformBoundaries, this.gnomegroup,this.reverseSprite,null,this);
       //Enemy collisions
-      /*
       this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.collider(this.gnomegroup, this.player, this.hitPlayer,null,this));
+      this.playerColliders.push(this.physics.add.overlap(this.flaggroup, this.player, this.levelEnd,null,this));
+      this.playerColliders.push(this.physics.add.overlap(this.gnomepathdetect, this.player, this.triggerGnomeCharge,null,this));
       this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
       this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
@@ -393,11 +464,9 @@ export default new Phaser.Class({
       this.physics.add.collider(this.playerbullet, this.tulipgroup,this.enemyShot,null,this);
       this.physics.add.collider(this.playerbullet, this.mousegroup,this.enemyShot,null,this);
       //Player on over icon
-      */
 
       // when the player overlaps with a tile with index 17, collectCoin
       // will be called
-      /*
       this.physics.add.overlap(this.player, this.tailbombicongroup,function(player,sprite) {
         sprite.destroy();
         this.canShoot = true;
@@ -410,7 +479,6 @@ export default new Phaser.Class({
         sprite.destroy();
         this.score+=10;
       },null,this);
-      */
 
       // player walk animation
       this.anims.create({
@@ -511,7 +579,7 @@ export default new Phaser.Class({
               var moveTo = this.plugins.get('rexMoveTo').add(rightbullet, {
                   speed: 80
               });
-              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); console.log(gameObject) });
+              moveTo.on('complete', function(gameObject, moveTo){ gameObject.destroy(); });
               if (this.player.anims.currentAnim.key == 'standshoot'){
                 moveTo.moveTo(this.map.widthInPixels,this.player.y-14)
               } else {
@@ -537,13 +605,7 @@ export default new Phaser.Class({
           }
       }, this );
 
-
-
-
-
       this.cursors = this.input.keyboard.createCursorKeys();
-      //this.dkey = this.input.keyboard.addKeys(Phaser.Input.Keyboard.KeyCodes.W);
-      //console.log(this.dkey);
       var thePlayer = this.player;
       this.input.keyboard.on('keydown_ENTER', function (event) {
           console.log("Player Location");
@@ -574,33 +636,22 @@ export default new Phaser.Class({
       });
       this.lifetext.setScrollFactor(0);
 
+      this.levelenddisplay = this.add.text(300, 400, '', {
+          fontSize: '20px',
+          fill: '#ffffff'
+      });
+
+
       //Death text
       this.deathtextcounter = 0;
       //this.lvltxt;
       //var thisscene = this;
-      /*
       this.lvltext = this.add.text(100, 100, 'LEVEL TEXT ', {
           fontSize: '20px',
           fill: '#ffffff'
       });
 
-      */
       //var lvltxt = this.lvltxt;
-
-      /*
-      WebFont.load({
-          google: {
-              families: [ 'Faster One', 'Finger Paint', 'Nosifer','Fontdiner Swanky' ]
-          },
-          active: function () {
-            console.log("ACTIVE");
-            console.log(thisscene.lvltxt);
-            /*
-
-
-          }
-      });
-      */
       this.lvltxt = this.add.text(200, -100, 'You Died', { fontFamily: 'Fontdiner Swanky', fontSize: 60, color: '#7b4585' });
       this.lvltxt.setStroke('#bbbe4b',8);
       this.lvltxt.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
@@ -625,180 +676,138 @@ export default new Phaser.Class({
         this.player.body.setAllowGravity(true);
       }
 
-      if(!this.playerIsDead) {
-        //For shooting
-        if(this.cursors.shift.isDown && !this.crouching && this.canShoot) {
-          this.player.anims.play('standshoot', true);
-          this.shooting = true;
-        } else if (this.cursors.shift.isDown && this.crouching && this.canShoot) {
-          this.player.anims.play('crouchshoot', true);
-        } else {
-
-          if(this.cursors.down.isDown && !this.crouching && !this.player.onLadder) {
-            //Crouching
-            this.player.body.setVelocityX(0);
-            this.player.anims.play('crouchdown', true);
-            this.crouching = true;
-          } else if (this.cursors.down.isUp && this.crouching && !this.player.onLadder) {
-            this.player.body.setVelocityX(0);
-            this.player.anims.play('crouchup', true);
-          } else {
-            //Normal Movement
-            if (this.cursors.left.isDown)
-            {
-                this.player.body.setVelocityX(-200);
-                if(!this.playerAttack) {
-                  this.player.anims.play('walk', true); // walk left
-                }
-                this.player.flipX = true; // flip the sprite to the left
-                this.player.facingRight = false;
-            }
-            else if (this.cursors.right.isDown)
-            {
-                this.player.body.setVelocityX(200);
-                if(!this.playerAttack) {
-                  this.player.anims.play('walk', true);
-                }
-                this.player.flipX = false; // use the original sprite looking to the right
-                this.player.facingRight = true;
-            } else {
-                this.player.body.setVelocityX(0);
-                if(!this.playerAttack && !this.crouching && !this.shooting && !this.player.onLadder) {
-                  this.player.anims.play('idle', true);
-                }
-                if(this.player.onLadder && !this.player.turned) {
-                  this.player.turned =true;
-                  this.player.anims.play('turning',true);
-                }
-            }
-          }
+      if(this.levelfinished) {
+        this.levelenddisplay.setText(this.levelendtext.substr(0,this.levelendcounter));
+        this.levelenddisplay.setText(this.levelendtext.substr(0,this.levelendcounter));
+        this.player.anims.play('idle');
+        this.player.setVelocity(0,0);
+        if(this.cursors.space.isDown) {
+          this.scene.start('PlayerDied');
         }
-        // jump
-        if (this.cursors.up.isDown && this.player.body.onFloor() && !this.player.onLadder)
-        {
-            this.player.body.setVelocityY(-400);
-        }
-
-        var up = this.cursors.up;
-        var down = this.cursors.down;
-
-        if (up.isDown && down.isUp && this.player.onLadder) {
-            this.player.anims.play('climb',true);
-            this.player.body.setVelocityY(-60);
-        } else if (down.isDown && up.isUp  && this.player.onLadder) {
-            this.player.anims.play('climb',true);
-            this.player.body.setVelocityY(+60);
-        } else if (down.isUp && up.isUp && this.player.onLadder) {
-            this.player.body.setVelocityY(0);
-        }
-
-
-        //Attack
-        if (this.cursors.space.isDown) {
-          if(!this.playerAttack) {
-            this.player.anims.play('tailwhip',true);
-            this.attackTimer = this.time.addEvent({
-              delay: 1000,
-              callback: function() { this.playerAttack = false; console.log("finishedattack") },
-              callbackScope: this,
-              loop: false
-            });
-          }
-          this.playerAttack = true;
-          //Stop the attack from running
-          console.log(this.attackTimer);
-        }
-
-        //Destroy any sprites falling off the screen
-        var destroyWorms = this.deadworms.children.entries.filter(child => child.y > this.map.heightInPixels);
-        if(destroyWorms.length > 0) {
-          destroyWorms.forEach(worm => worm.destroy());
-        }
-
-        /*
-        var spritesWithIncorrectVelocity = this.cauligroup.children.entries.filter(child => child.body.velocity.x != this.enemyVelocityX || child.body.velocity.x != (this.enemyVelocityX * -1));
-        for(var i=0;i<spritesWithIncorrectVelocity .length;i++) {
-          if(spritesWithIncorrectVelocity.length > 0) {
-            console.log("Sprites Exist")
-          }
-          if (spritesWithIncorrectVelocity[i].body.velocity.x < this.enemyVelocityX) {
-            spritesWithIncorrectVelocity[i].setAccelerationX(20);
-          } else if (spritesWithIncorrectVelocity[i].body.velocity.x > this.enemyVelocityX) {
-            spritesWithIncorrectVelocity[i].setAccelerationX(-20);
-          } else {
-            spritesWithIncorrectVelocity[i].setAccelerationX(0);
-          }
-        }*/
-
-        //Bounce back sprites
-        /*
-        if(this.bouncing.length > 0) {
-          for(var i=0;i<this.bouncing.length;i++) {
-            if(this.bouncing[i].bounceTimer == 0) {
-              var vel = this.bouncing[i].body.velocity.x;
-              this.bouncing[i].setVelocityX(vel*-1);
-              this.bouncing.pop(this.bouncing[i])
-            } else {
-              this.bouncing[i].bounceTimer--;
-            }
-          }
-        }*/
       } else {
-        if(this.playDeathText) {
-          if(this.deathtextcounter < 190) {
-            this.deathtextcounter += 5;
-            this.lvltxt.setPosition(200,this.deathtextcounter);
-          }
-          if(this.cursors.space.isDown) {
-            if(this.player.lives <=0) {
-              this.scene.start('PlayerDied');
+        if(!this.playerIsDead) {
+          //For shooting
+          if(this.cursors.shift.isDown && !this.crouching && this.canShoot) {
+            this.player.anims.play('standshoot', true);
+            this.shooting = true;
+          } else if (this.cursors.shift.isDown && this.crouching && this.canShoot) {
+            this.player.anims.play('crouchshoot', true);
+          } else {
+
+            if(this.cursors.down.isDown && !this.crouching && !this.player.onLadder) {
+              //Crouching
+              this.player.body.setVelocityX(0);
+              this.player.anims.play('crouchdown', true);
+              this.crouching = true;
+            } else if (this.cursors.down.isUp && this.crouching && !this.player.onLadder) {
+              this.player.body.setVelocityX(0);
+              this.player.anims.play('crouchup', true);
+            } else {
+              //Normal Movement
+              if (this.cursors.left.isDown)
+              {
+                  this.player.body.setVelocityX(-200);
+                  if(!this.playerAttack) {
+                    this.player.anims.play('walk', true); // walk left
+                  }
+                  this.player.flipX = true; // flip the sprite to the left
+                  this.player.facingRight = false;
+              }
+              else if (this.cursors.right.isDown)
+              {
+                  this.player.body.setVelocityX(200);
+                  if(!this.playerAttack) {
+                    this.player.anims.play('walk', true);
+                  }
+                  this.player.flipX = false; // use the original sprite looking to the right
+                  this.player.facingRight = true;
+              } else {
+                  this.player.body.setVelocityX(0);
+                  if(!this.playerAttack && !this.crouching && !this.shooting && !this.player.onLadder) {
+                    this.player.anims.play('idle', true);
+                  }
+                  if(this.player.onLadder && !this.player.turned) {
+                    this.player.turned =true;
+                    this.player.anims.play('turning',true);
+                  }
+              }
             }
-            this.deadplayer.destroy();
-            this.playerIsDead = false;
-            this.player.setVelocityY(0);
-            //this.playerColliders.forEach(collider =>
-              //collider.active = true
-            //);
+          }
+          // jump
+          if (this.cursors.up.isDown && this.player.body.onFloor() && !this.player.onLadder)
+          {
+              this.player.body.setVelocityY(-400);
+          }
 
-            //reset text
-            console.log(this.player);
-            this.invulnerable = true;
-            this.invulnerableTimer = this.time.addEvent({
-              delay: 2000,
-              callback: function() { this.invulnerable = false; },
-              callbackScope: this,
-              loop: false
-            });
-            this.deathtextcounter = 0;
-            this.playDeathText = false;
-            this.lvltxt.setPosition(200,-100);
-            this.player.anims.play('idle',true);
-            this.playerColliders.forEach(collider => collider.active = true);
-            //respawn the player - recreate the colliders
+          var up = this.cursors.up;
+          var down = this.cursors.down;
 
-            /*
-            this.playerColliders = [];
-            //this.playerColliders.push(this.physics.add.collider(this.platformLayer, this.player));
-            this.playerColliders.push(this.physics.add.collider(this.wormgroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.cauligroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.tulipgroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.mousegroup, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.bulletgroupleft, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.bulletgroupright, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.seedgroupleft, this.player, this.hitPlayer,null,this));
-            this.playerColliders.push(this.physics.add.collider(this.seedgroupright, this.player, this.hitPlayer,null,this));
-            */
+          if (up.isDown && down.isUp && this.player.onLadder) {
+              this.player.anims.play('climb',true);
+              this.player.body.setVelocityY(-60);
+          } else if (down.isDown && up.isUp  && this.player.onLadder) {
+              this.player.anims.play('climb',true);
+              this.player.body.setVelocityY(+60);
+          } else if (down.isUp && up.isUp && this.player.onLadder) {
+              this.player.body.setVelocityY(0);
+          }
 
-            //this.player.setPosition(this.playerRespawnX,this.playerRespawnY);
-            this.player.x = this.playerRespawnX;
-            this.player.y = this.playerRespawnY-34;
-            this.player.setVisible(true);
-            //this.playerColliders.forEach(collider => collider.active = true);
+
+          //Attack
+          if (this.cursors.space.isDown) {
+            if(!this.playerAttack) {
+              this.player.anims.play('tailwhip',true);
+              this.attackTimer = this.time.addEvent({
+                delay: 1000,
+                callback: function() { this.playerAttack = false; },
+                callbackScope: this,
+                loop: false
+              });
+            }
+            this.playerAttack = true;
+          }
+
+          //Destroy any sprites falling off the screen
+          var destroyWorms = this.deadworms.children.entries.filter(child => child.y > this.map.heightInPixels);
+          if(destroyWorms.length > 0) {
+            destroyWorms.forEach(worm => worm.destroy());
+          }
+        } else {
+          if(this.playDeathText) {
+            if(this.deathtextcounter < 190) {
+              this.deathtextcounter += 5;
+              this.lvltxt.setPosition(200,this.deathtextcounter);
+            }
+            if(this.cursors.space.isDown) {
+              if(this.player.lives <=0) {
+                this.scene.start('PlayerDied');
+              }
+              this.deadplayer.destroy();
+              this.playerIsDead = false;
+              this.player.setVelocityY(0);
+
+
+              //reset text
+              this.invulnerable = true;
+              this.invulnerableTimer = this.time.addEvent({
+                delay: 2000,
+                callback: function() { this.invulnerable = false; },
+                callbackScope: this,
+                loop: false
+              });
+              this.deathtextcounter = 0;
+              this.playDeathText = false;
+              this.lvltxt.setPosition(200,-100);
+              this.player.anims.play('idle',true);
+              this.playerColliders.forEach(collider => collider.active = true);
+              this.player.x = this.playerRespawnX;
+              this.player.y = this.playerRespawnY-34;
+              this.player.setVisible(true);
+            }
           }
         }
-        console.log(this.playerRespawnY);
-
       }
+
 
   },
 
@@ -807,25 +816,17 @@ export default new Phaser.Class({
   },
 
   render: function() {
-
       // Sprite debug info
       game.debug.spriteInfo(spidergroup, 32, 32);
 
   },
 
-  /*
-  reverseSprite: function() {
-    var wormsright =  this.wormgroup.children.entries.filter(child => child.body.blocked.right)
-    wormsright.forEach(worm => worm.flipX = true);
-    wormsright.forEach(worm => worm.setVelocityX(-20));
-
-    var wormsleft =  this.wormgroup.children.entries.filter(child => child.body.blocked.left)
-    wormsleft.forEach(worm => worm.flipX = false);
-    wormsleft.forEach(worm => worm.setVelocityX(20));
-
-  },*/
-
   reverseSprite: function(sprite,boundary) {
+    if(sprite.texture.key == "gnome" && sprite.gnomecharge) {
+      //Cancel charge
+      sprite.anims.play('gnomemove');
+      sprite.gnomecharge = false;
+    }
     if(sprite.body.blocked.right) {
       sprite.setVelocityX(-20);
       sprite.flipX = false;
@@ -838,35 +839,41 @@ export default new Phaser.Class({
   hitPlayer: function(player,worm) {
     //Get the enemy sprite texture
     var enemyTexture = worm.texture;
-    console.log(enemyTexture);
 
     if(enemyTexture.key === 'bullet' ||  enemyTexture.key === 'seed') {
       worm.setVisible(false);
       var playerDeathX = player.x;
       var playerDeathY = player.y;
-      this.playerRespawnX = player.x;
-      this.playerRespawnY = player.y;
-      this.player.setVisible(false);
-      this.player.lives -= 1;
-      this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
-      this.deadplayer.setVelocityY(-400)
-      this.deadplayer.setVelocityX(0)
-      this.deadplayer.anims.play('death',true);
-      this.playerIsDead = true;
-      this.timer = this.time.addEvent({
-        delay: 2000,
-        callback: function() { this.playDeathText=true; },
-        callbackScope: this,
-        loop: true
-      });
-      //this.input.keyboard.removeCapture(37,38,39,40);
-      this.playerColliders.forEach(collider => collider.active = false);
-      //this.player.checkCollision.none = true;
-      this.player.setVelocityX(0);
-      this.player.setVelocityY(-400);
+      if(!this.invulnerable) {
+        this.playerRespawnX = player.x;
+        this.playerRespawnY = player.y;
+        this.player.setVisible(false);
+        this.player.lives -= 1;
+        this.deadplayer = this.physics.add.sprite(player.x,player.y, 'player');
+        this.deadplayer.setVelocityY(-400)
+        this.deadplayer.setVelocityX(0)
+        this.deadplayer.anims.play('death',true);
+        this.playerIsDead = true;
+        this.timer = this.time.addEvent({
+          delay: 2000,
+          callback: function() { this.playDeathText=true; },
+          callbackScope: this,
+          loop: true
+        });
+        //this.input.keyboard.removeCapture(37,38,39,40);
+        this.playerColliders.forEach(collider => collider.active = false);
+        //this.player.checkCollision.none = true;
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(-400);
+     }
     } else {
       if(this.playerAttack) {
         if(worm.hitpoints == 0) {
+          //Gnome destroy the detect box as well
+          if(worm.texture.key == "gnome") {
+            var detector = this.gnomepathdetect.children.entries.filter(detector => detector.gnomeIndex == worm.gnomeIndex)[0];
+            detector.destroy();
+          }
           //Die
           var sprite = this.deadworms.create(worm.x, worm.y, 'worm');
           sprite.anims.play(enemyTexture.key+'move');
@@ -875,7 +882,6 @@ export default new Phaser.Class({
           this.deadworms.setVelocity(0,-400);
           worm.destroy();
         } else {
-            console.log(worm);
             //var wormvel = worm.body.velocity.x;
             worm.hitpoints -= 1;
 
@@ -973,7 +979,7 @@ export default new Phaser.Class({
       //var tile = this.ladders.getTileAtWorldXY(this.player.x,this.player.y + platform.height + (this.player.height / 2),true)
       var tile = this.ladders.getTileAtWorldXY(this.player.x,ladderLocation,true);
       if(tile.index != -1) {
-        console.log("Ladder Underneath");
+
         if(this.cursors.down.isDown) {
           player.body.y = player.body.y + platform.height + player.height;
         }
@@ -1005,6 +1011,53 @@ export default new Phaser.Class({
       this.player.setVelocityX(0);
       this.player.setVelocityY(-400);
     }
-  }
+  },
 
+  triggerGnomeCharge: function(player,detector) {
+    //Get the Gnome
+    var gnome = this.gnomegroup.children.entries.filter(gnome => gnome.gnomeIndex == detector.gnomeIndex)[0];
+
+    if(gnome.body.velocity.x < 0) {
+      console.log("Gnome is Left");
+      var gnomeRight = false;
+    }  else {
+      console.log("Gnome is right")
+      var gnomeRight = true;
+    }
+
+    gnome.on('animationcomplete',function () {
+        if(gnome.anims.currentAnim.key == 'gnomecrouch') {
+          //alert(gnome.body.velocity.x);
+          gnome.anims.play('gnomecharge');
+          if(gnome.body.velocity.x < 0){
+            gnome.setVelocityX(-200);
+          } else {
+            gnome.setVelocityX(200);
+          }
+        }
+    }, this );
+
+    if(player.body.x > gnome.body.x) {
+      console.log("Player is right of Gnome");
+      var playerRight = true;
+    } else {
+      console.log("Player is left of Gnome")
+      var playerRight = false;
+    }
+
+    //Make the gnome charge
+    if(gnomeRight && playerRight && !gnome.gnomecharge) {
+      gnome.gnomecharge = true;
+      gnome.anims.play('gnomecrouch');
+    }
+
+    if(!gnomeRight && !playerRight && !gnome.gnomecharge) {
+      gnome.gnomecharge = true;
+      gnome.anims.play('gnomecrouch');
+    }
+  },
+
+  levelEnd: function(sprite,player) {
+    this.levelfinished = true;
+  }
 });
